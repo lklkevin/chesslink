@@ -112,7 +112,7 @@ This approach preserves the physical experience of chess while adding an intelli
    ```bash
    npm run dev
    ```
-   **Visit [http://localhost:3000](http://localhost:3000)** (or the configured port) to view the web interface.
+   **Visit [http://localhost:8080](http://localhost:8080)** to view the web interface.
 
 2. **Connect the Chessboard**  
    - **Power On the Board:** Ensure your Arduino-based chessboard is powered and connected.  
