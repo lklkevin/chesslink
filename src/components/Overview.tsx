@@ -60,7 +60,7 @@ const Overview: React.FC = () => {
                       <Info className="h-4 w-4 text-accent" />
                     </div>
                     <div className="ml-3">
-                      <p><strong className="font-medium text-gray-900">Microcontroller:</strong> Arduino Nano (or similar) reads sensor data and communicates with the web app.</p>
+                      <p><strong className="font-medium text-gray-900">Microcontroller:</strong> Arduino reads sensor data and communicates with the web app.</p>
                     </div>
                   </li>
                 </ul>
