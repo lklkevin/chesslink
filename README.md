@@ -1,4 +1,4 @@
-# Interactive Smart Chessboard – CSC490 Final Project
+# Chesslink - Interactive Smart Chessboard
 
 This repository contains the source code and documentation for a **smart chessboard** that detects piece movements, tracks games in real time, and provides training features. It combines physical gameplay with digital benefits like move suggestions, audio feedback, and online connectivity.
 
