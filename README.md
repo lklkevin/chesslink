@@ -13,11 +13,7 @@ This repository contains the source code and documentation for a **smart chessbo
 5. [Installation](#installation)  
 6. [Usage](#usage)  
 7. [Configuration](#configuration)  
-8. [Contributing](#contributing)  
-9. [License](#license)  
-10. [Contact](#contact)  
-11. [Acknowledgments](#acknowledgments)
-
+8. [Contributing](#contributing)
 ---
 
 ## Overview
@@ -92,3 +88,73 @@ This approach preserves the physical experience of chess while adding an intelli
    ```bash
    git clone https://github.com/lklkevin/chesslink.git
    cd chesslink
+
+2. **Install Dependencies**  
+   Make sure you have [Node.js](https://nodejs.org/) installed, then run:
+
+   ```bash
+   npm install
+   ```
+
+   This command installs all the Node.js packages listed in `package.json` that are required for the application.
+
+3. **Arduino Setup (Optional)**  
+   - **Install the Arduino IDE:** Download from [here](https://www.arduino.cc/en/software).  
+   - **Upload Firmware:** Connect your Arduino Nano (or compatible board) and upload the sketch from the `firmware` folder.
+
+4. **Serverless/Hosting Setup (Optional)**  
+   - **Configure Serverless Functions:** If deploying your web app serverlessly (e.g., on Netlify, Vercel, or AWS Lambda), set up your functions and environment variables according to your platform’s guidelines.
+
+---
+## Usage
+
+1. **Start the Development Server**  
+   ```bash
+   npm run dev
+   ```
+   **Visit [http://localhost:3000](http://localhost:3000)** (or the configured port) to view the web interface.
+
+2. **Connect the Chessboard**  
+   - **Power On the Board:** Ensure your Arduino-based chessboard is powered and connected.  
+   - **Real-Time Updates:** As you move pieces, the sensor data is transmitted to the web application, reflecting live game updates.
+
+3. **Training Mode**  
+   - **Enable Training Mode:** Receive LED and audio prompts guiding you with valid moves or alerting you to potential mistakes.
+
+4. **Analysis Mode**  
+   - **Access Saved Games:** View move-by-move breakdowns and receive recommendations from a chess engine or analysis library.
+
+5. **Build for Production**  
+   ```bash
+   npm run build
+   ```
+   **Deploy the built output along with your serverless functions to your chosen hosting platform.**
+
+---
+
+## Configuration
+
+- **Environment Variables:**  
+  Create a `.env` file (or set variables in your hosting platform). Examples include:
+  - `PORT`
+  - Database connection strings
+  - API keys for chess engines, etc.
+
+- **Arduino Firmware:**  
+  Adjust sensor thresholds, LED brightness, or communication protocols in the `.ino` file as needed.
+
+- **Web Application Settings:**  
+  Tweak configuration files (e.g., `config.js`) to adjust UI settings, default modes, or integrate external services.
+
+---
+
+## Contributing
+
+We welcome pull requests, bug reports, and feature suggestions! To contribute:
+
+1. **Fork the Repository**  
+2. **Create a New Feature Branch** from the `main` branch.  
+3. **Commit and Push Your Changes** with clear commit messages.  
+4. **Open a Pull Request** on GitHub, describing your changes and linking any relevant issues.
+
+*For major changes, consider opening an issue first to discuss your proposed improvements.*
