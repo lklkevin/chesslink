@@ -26,7 +26,7 @@ const DEMO_MOVES = [
 const fenToBoard = (fen: string): string[][] => {
   const board: string[][] = Array(8).fill('').map(() => Array(8).fill(' '));
   const rows = fen.split('/');
-  
+
   for (let i = 0; i < rows.length; i++) {
     let col = 0;
     for (let j = 0; j < rows[i].length; j++) {

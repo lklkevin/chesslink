@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ChevronRight, Play } from 'lucide-react';
 import { useInView } from '@/lib/animations';
@@ -35,9 +34,9 @@ const Hero: React.FC = () => {
                 Explore Features
                 <ChevronRight className="ml-2 h-4 w-4" />
               </a>
-              <a href="#demo" className="btn-secondary rounded-full">
+              <a href="/demo" className="btn-secondary rounded-full">
                 <Play className="mr-2 h-4 w-4" />
-                Watch Demo
+                Interactive Demo
               </a>
             </div>
           </div>

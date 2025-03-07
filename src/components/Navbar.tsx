@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 
@@ -12,7 +11,7 @@ const navLinks: NavLink[] = [
   { name: 'Features', href: '#features' },
   { name: 'Hardware', href: '#hardware' },
   { name: 'Software', href: '#software' },
-  { name: 'Demo', href: '#demo' },
+  { name: 'Demo', href: '/demo' },
 ];
 
 const Navbar: React.FC = () => {
