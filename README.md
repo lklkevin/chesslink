@@ -188,6 +188,84 @@ The entire system follows a layered approach where each component has a specific
 
 This architecture allows for flexibility in deployment - the system can work as a standalone device with the local application, or as a connected device with full server integration for advanced features.
 
+### 5. System Architecture Diagram
+
+```
++-------------------------------------------------------------------------------------------------------------+
+|                                           CHESSLINK SYSTEM ARCHITECTURE                                      |
++-------------------------------------------------------------------------------------------------------------+
+
++------------------------+        +------------------------+        +------------------------+
+|   PHYSICAL LAYER       |        |   PROCESSING LAYER     |        |   APPLICATION LAYER    |
+|                        |        |                        |        |                        |
+|  +------------------+  |        |  +------------------+  |        |  +------------------+  |
+|  | Chess Board      |  |        |  | ESP32-S3         |  |        |  | Local Software   |  |
+|  |                  |  |        |  | Microcontroller  |  |        |  | Application      |  |
+|  | +-------+        |  |        |  |                  |  |        |  |                  |  |
+|  | | IR    |  x64   |  |        |  | +-------------+  |  |        |  | +-------------+  |  |
+|  | | Sensor|        |  |        |  | | Sensor Data |  |  |        |  | | Board State |  |  |
+|  | | + LED |        |  |        |  | | Processing  |  |  |        |  | | Management  |  |  |
+|  | +-------+        |  |        |  | +-------------+  |  |        |  | +-------------+  |  |
+|  |                  |  |        |  |                  |  |        |  |                  |  |
+|  | +-----------+    |  |        |  | +-------------+  |  |        |  | +-------------+  |  |
+|  | | Chess     |    |  |        |  | | FEN         |  |  |        |  | | Game UI &   |  |  |
+|  | | Pieces    |    |  |        |  | | Conversion  |  |  |        |  | | Visualization|  |  |
+|  | +-----------+    |  |        |  | +-------------+  |  |        |  | +-------------+  |  |
+|  +------------------+  |        |  |                  |  |        |  |                  |  |
+|          |             |        |  | +-------------+  |  |        |  | +-------------+  |  |
+|  +------------------+  |        |  | | Move        |  |  |        |  | | Move        |  |  |
+|  | Arduino Nano     |<------------>| | Validation  |  |  |        |  | | History &   |  |  |
+|  | (Co-processor)   |  |        |  | +-------------+  |  |        |  | | Analysis    |  |  |
+|  +------------------+  |        |  +------------------+  |        |  +------------------+  |
++------------------------+        +------------------------+        +------------------------+
+           ^                                 ^                                 ^
+           |                                 |                                 |
+           |                                 |                                 |
+           v                                 v                                 v
++----------------------------------------------------------------------------------------+
+|                                 COMMUNICATION LAYER                                     |
+|                                                                                        |
+|  +-------------+            +----------------+             +--------------------+      |
+|  | I2C         |            | TCP/Serial/    |             | Web API/WebSocket  |      |
+|  | Interface   |<---------->| Bluetooth      |<----------->| Communication      |      |
+|  +-------------+            +----------------+             +--------------------+      |
++----------------------------------------------------------------------------------------+
+           ^                                                             ^
+           |                                                             |
+           v                                                             v
++------------------------+                                    +------------------------+
+|   OPTIONAL SERVER      |                                    |   EXTERNAL SYSTEMS     |
+|   LAYER                |                                    |                        |
+|                        |                                    |  +------------------+  |
+|  +------------------+  |                                    |  | Chess Engines    |  |
+|  | Backend Server   |  |                                    |  |                  |  |
+|  | (Node.js/Python) |  |                                    |  | +-------------+  |  |
+|  |                  |  |                                    |  | | Move        |  |  |
+|  | +-------------+  |  |                                    |  | | Analysis    |  |  |
+|  | | Game        |  |  |                                    |  | +-------------+  |  |
+|  | | Storage     |  |  |                                    |  +------------------+  |
+|  | +-------------+  |  |                                    |                        |
+|  |                  |  |                                    |  +------------------+  |
+|  | +-------------+  |  |                                    |  | Online Chess     |  |
+|  | | User        |  |  |                                    |  | Platforms        |  |
+|  | | Management  |  |  |                                    |  +------------------+  |
+|  | +-------------+  |  |                                    |                        |
+|  +------------------+  |                                    +------------------------+
+|                        |
+|  +------------------+  |                DATA FLOW DIRECTION
+|  | Database         |  |                ------------------>
+|  |                  |  |                                 
+|  | +-------------+  |  |                CHESS MOVES FLOW:
+|  | | Game History|  |  |                1. Physical piece movement detected by sensors
+|  | +-------------+  |  |                2. Raw sensor data processed by microcontrollers
+|  |                  |  |                3. Board state converted to FEN notation
+|  | +-------------+  |  |                4. Move validated against chess rules
+|  | | User Data   |  |  |                5. Valid moves sent to software application
+|  | +-------------+  |  |                6. Game state updated and visualized
+|  +------------------+  |                7. Optional server storage and analysis
++------------------------+                8. Optional feedback sent back to board (LEDs)
+```
+
 ---
 
 ## Installation
