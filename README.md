@@ -10,10 +10,11 @@ This repository contains the source code and documentation for a **smart chessbo
 2. [Features](#features)  
 3. [Hardware Overview](#hardware-overview)  
 4. [Software Overview](#software-overview)  
-5. [Installation](#installation)  
-6. [Usage](#usage)  
-7. [Configuration](#configuration)  
-8. [Contributing](#contributing)
+5. [System Architecture](#system-architecture)  
+6. [Installation](#installation)  
+7. [Usage](#usage)  
+8. [Configuration](#configuration)  
+9. [Contributing](#contributing)
 ---
 
 ## Overview
@@ -68,7 +69,7 @@ This approach preserves the physical experience of chess while adding an intelli
 ## Software Overview
 
 1. **Board Sensors → Arduino**  
-   As soon as you move a piece, the board’s sensors note the change in position.
+   As soon as you move a piece, the board's sensors note the change in position.
 
 2. **Arduino → Web App**  
    The Arduino sends the move data via serial or other communication channel to our Node.js-based server.
@@ -79,6 +80,113 @@ This approach preserves the physical experience of chess while adding an intelli
 
 4. **Feedback to the Board**  
    - LED lights or audio prompts may be triggered based on the game state or training mode settings.
+
+---
+
+## System Architecture
+
+The ChessLink system is designed with a layered architecture that connects physical chess pieces to a digital platform through several interconnected components:
+
+### 1. Physical Layer
+
+#### Chessboard & Sensor Array
+- **Hall Effect Sensors**: Each square contains an IR sensor with an RGB LED to detect piece presence and provide visual feedback
+- **Digital I/O**: 1 digital pin per sensor module to read the sensor state
+- **Sensor Arrangement**: 8×8 grid (64 squares) with consistent 3cm spacing between sensors
+- **Power Requirements**: 5V power supply for sensors and microcontroller components
+
+#### Microcontroller System
+- **ESP32-S3 Microcontroller**: 
+  - Central processing unit running at 160MHz
+  - Handles sensor data collection, board state determination, and communication
+  - Runs frequent scanning cycles (every second) to detect changes in piece positions
+  - Converts raw sensor readings into a digital representation of the chessboard
+  - Processes the data to determine legal moves and board state
+  - Translates the board state into FEN notation for software integration
+
+- **Arduino Nano**: 
+  - Secondary microcontroller acting as a co-processor when needed
+  - Connected to the ESP32-S3 through I2C interface
+  - Assists with sensor reading and processing tasks
+
+- **Connectivity Options**:
+  - **WiFi Module**: For wireless connectivity to the network
+  - **Bluetooth (BLE) 5**: For direct connection to mobile devices or computers
+  - **TCP Socket/WebSocket/Serial Communication**: Various protocol options to connect with the software application
+
+### 2. Software Layer
+
+#### Local Software Application
+- **Localized Board State Management**:
+  - Maintains the current state of the chessboard
+  - Tracks the history of moves and past positions
+  - Validates moves based on chess rules
+  - Updates the FEN (Forsyth–Edwards Notation) representation
+  - Performs regular checks for board state validity
+
+- **User Interface Components**:
+  - Sends voice prompts when pieces are moved
+  - Sends LED signals to indicate where moves are legal
+  - Highlights squares for move suggestions
+  - Provides audio feedback on game state
+
+- **Local Game Visualization**:
+  - Web-based interface or desktop application
+  - Renders the current board visually
+  - Displays game information and history
+  - Python app for more advanced functionality
+
+#### Server-Side Architecture (Optional)
+
+- **Backend Server**:
+  - Built with Python or Node.js
+  - Accepts JSON data regardless of transmission method
+  - Handles API requests
+  - Stores history of all games played
+  - Updates games for web app viewing
+  - Allows for multiple games on multiple servers to be played simultaneously
+
+- **Database System**:
+  - Stores game history, user profiles, and analysis data
+  - Provides persistent storage across sessions
+  - Enables game replay and analysis features
+
+#### Frontend Server
+- **Web Application**:
+  - Built with Node.js and React
+  - Responsive design with Tailwind CSS
+  - Real-time updates of ongoing games
+  - Analysis tools and interfaces
+
+### 3. Communication Pathways
+
+#### Hardware to Software Communication
+- **Processor to App**: 
+  - Data flow from the microcontroller system to the local software
+  - Uses TCP socket, mounted files, or serial connection depending on setup
+
+#### App to Processor Communication
+- **Software commands to hardware**:
+  - Control signals for LED feedback
+  - Request for board state updates
+  - Training mode instructions
+
+#### Local to Server Communication
+- **API/JSON Data Exchange**:
+  - Secure transmission of game data
+  - Authentication for user-specific features
+  - Real-time updates through WebSocket connections
+
+### 4. System Integration
+
+The entire system follows a layered approach where each component has a specific responsibility:
+
+1. **Sensing Layer**: Detects the physical position of chess pieces
+2. **Processing Layer**: Converts sensor data into chess notation and game state
+3. **Application Layer**: Provides user interface and game management features
+4. **Optional Server Layer**: Enables online features, persistent storage, and multiplayer capabilities
+
+This architecture allows for flexibility in deployment - the system can work as a standalone device with the local application, or as a connected device with full server integration for advanced features.
 
 ---
 
@@ -103,7 +211,7 @@ This approach preserves the physical experience of chess while adding an intelli
    - **Upload Firmware:** Connect your Arduino Nano (or compatible board) and upload the sketch from the `firmware` folder.
 
 4. **Serverless/Hosting Setup (Optional)**  
-   - **Configure Serverless Functions:** If deploying your web app serverlessly (e.g., on Netlify, Vercel, or AWS Lambda), set up your functions and environment variables according to your platform’s guidelines.
+   - **Configure Serverless Functions:** If deploying your web app serverlessly (e.g., on Netlify, Vercel, or AWS Lambda), set up your functions and environment variables according to your platform's guidelines.
 
 ---
 ## Usage
