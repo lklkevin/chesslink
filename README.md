@@ -96,7 +96,7 @@ The ChessLink system is designed with a layered architecture that connects physi
 - **Power Requirements**: 5V power supply for sensors and microcontroller components
 
 #### Microcontroller System
-- **ESP32-S3 Microcontroller**: 
+- **ESP32-C3 Microcontroller**: 
   - Central processing unit running at 160MHz
   - Handles sensor data collection, board state determination, and communication
   - Runs frequent scanning cycles (every second) to detect changes in piece positions
@@ -106,7 +106,7 @@ The ChessLink system is designed with a layered architecture that connects physi
 
 - **Arduino Nano**: 
   - Secondary microcontroller acting as a co-processor when needed
-  - Connected to the ESP32-S3 through I2C interface
+  - Connected to the ESP32-C3 through I2C interface
   - Assists with sensor reading and processing tasks
 
 - **Connectivity Options**:
@@ -199,7 +199,7 @@ This architecture allows for flexibility in deployment - the system can work as 
 |   PHYSICAL LAYER       |        |   PROCESSING LAYER     |        |   APPLICATION LAYER    |
 |                        |        |                        |        |                        |
 |  +------------------+  |        |  +------------------+  |        |  +------------------+  |
-|  | Chess Board      |  |        |  | ESP32-S3         |  |        |  | Local Software   |  |
+|  | Chess Board      |  |        |  | ESP32-C3         |  |        |  | Local Software   |  |
 |  |                  |  |        |  | Microcontroller  |  |        |  | Application      |  |
 |  | +-------+        |  |        |  |                  |  |        |  |                  |  |
 |  | | IR    |  x64   |  |        |  | +-------------+  |  |        |  | +-------------+  |  |
