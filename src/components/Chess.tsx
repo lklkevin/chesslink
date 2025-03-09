@@ -7,8 +7,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Chess as ChessJS } from 'chess.js';
 import { AlertCircle, RotateCcw, Send, Info, Settings, Zap, Maximize, Minimize, Volume2, VolumeX } from 'lucide-react';
 
-// Chess piece SVG mappings
+// Chess piece SVG mappings with fallbacks
 const PIECE_IMAGES: Record<string, string> = {
+  // Primary URLs (chess.com pieces)
   'p': 'https://www.chess.com/chess-themes/pieces/neo/150/bp.png',
   'n': 'https://www.chess.com/chess-themes/pieces/neo/150/bn.png',
   'b': 'https://www.chess.com/chess-themes/pieces/neo/150/bb.png',
@@ -21,6 +22,79 @@ const PIECE_IMAGES: Record<string, string> = {
   'R': 'https://www.chess.com/chess-themes/pieces/neo/150/wr.png',
   'Q': 'https://www.chess.com/chess-themes/pieces/neo/150/wq.png',
   'K': 'https://www.chess.com/chess-themes/pieces/neo/150/wk.png',
+  
+  // Fallback URLs (wikimedia commons pieces)
+  'p_fallback': 'https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.svg',
+  'n_fallback': 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Chess_ndt45.svg',
+  'b_fallback': 'https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg',
+  'r_fallback': 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg',
+  'q_fallback': 'https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg',
+  'k_fallback': 'https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg',
+  'P_fallback': 'https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg',
+  'N_fallback': 'https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg',
+  'B_fallback': 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg',
+  'R_fallback': 'https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg',
+  'Q_fallback': 'https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg',
+  'K_fallback': 'https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg',
+};
+
+// Unicode fallbacks as a last resort
+const UNICODE_PIECES: Record<string, string> = {
+  'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚',
+  'P': '♙', 'N': '♘', 'B': '♗', 'R': '♖', 'Q': '♕', 'K': '♔',
+};
+
+// Add a component for piece display with fallbacks
+const ChessPiece: React.FC<{ piece: string; isAnimated?: boolean }> = ({ piece, isAnimated = false }) => {
+  const [imgError, setImgError] = useState(false);
+  const [fallbackError, setFallbackError] = useState(false);
+
+  // Get appropriate alt text
+  const getPieceAlt = () => {
+    const color = piece === piece.toUpperCase() ? 'White' : 'Black';
+    const type = 
+      piece.toLowerCase() === 'p' ? 'Pawn' : 
+      piece.toLowerCase() === 'r' ? 'Rook' : 
+      piece.toLowerCase() === 'n' ? 'Knight' : 
+      piece.toLowerCase() === 'b' ? 'Bishop' : 
+      piece.toLowerCase() === 'q' ? 'Queen' : 'King';
+    return `${color} ${type}`;
+  };
+
+  if (fallbackError) {
+    // Use Unicode as final fallback
+    return (
+      <div className="flex items-center justify-center w-full h-full">
+        <span className={`${isAnimated ? 'text-4xl' : 'text-5xl'} font-chess`}>
+          {UNICODE_PIECES[piece]}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center">
+      {!imgError ? (
+        <img 
+          src={PIECE_IMAGES[piece]} 
+          alt={getPieceAlt()}
+          className="w-full h-full object-contain p-1 max-w-full max-h-full"
+          draggable={false}
+          style={{ display: 'block' }}
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <img 
+          src={PIECE_IMAGES[`${piece}_fallback`]} 
+          alt={getPieceAlt()}
+          className="w-full h-full object-contain p-1 max-w-full max-h-full"
+          draggable={false}
+          style={{ display: 'block' }}
+          onError={() => setFallbackError(true)}
+        />
+      )}
+    </div>
+  );
 };
 
 // Difficulty levels for the computer player
@@ -103,7 +177,7 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
       for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {
           const square = getRankFileNotation(row, col);
-          const piece = initialGame.get(square);
+          const piece = initialGame.get(square as any);
           initialBoard[row][col] = piece || null;
         }
       }
@@ -177,7 +251,7 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const square = getRankFileNotation(row, col);
-        const piece = game.get(square);
+        const piece = game.get(square as any);
         newBoard[row][col] = piece || null;
       }
     }
@@ -304,7 +378,7 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
       }
       
       // Get the piece that's moving
-      const movingPiece = game.get(selectedSquare);
+      const movingPiece = game.get(selectedSquare as any);
       
       // Try to make the move
       try {
@@ -355,7 +429,7 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
       setLegalMoves([]);
     } else {
       // Select the square if it has a piece of the current player's color
-      const piece = game.get(square);
+      const piece = game.get(square as any);
       console.log("Piece at square:", piece);
       
       if (piece && piece.color === currentPlayer) {
@@ -363,9 +437,9 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
         setSelectedSquare(square);
         
         // Get legal moves for this piece
-        const moves = game.moves({ square, verbose: true });
+        const moves = game.moves({ square: square as any, verbose: true });
         console.log("Legal moves:", moves);
-        const legalDestinations = moves.map(move => move.to);
+        const legalDestinations = moves.map((move: any) => move.to);
         setLegalMoves(legalDestinations);
       } else {
         console.log("No suitable piece to select");
@@ -379,7 +453,7 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
 
   // Check if a move requires pawn promotion
   const needsPromotion = (from: Square, to: Square): boolean => {
-    const piece = game.get(from);
+    const piece = game.get(from as any);
     if (!piece || piece.type !== 'p') return false;
     
     const [fromRow] = getRowColFromNotation(from);
@@ -390,104 +464,177 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
 
   // Make a move for the computer player
   const makeComputerMove = async () => {
+    if (!isMounted.current) return;
+    
+    console.log("=== COMPUTER MOVE START ===");
+    console.log("Current game state:", game.fen());
+    console.log("Current player:", game.turn());
+    
+    // Only proceed if we're in computer mode and it's black's turn
+    if (gameMode !== 'computer' || game.turn() !== 'b') {
+      console.log("Not computer's turn to move or not in computer mode");
+      return;
+    }
+    
     setIsThinking(true);
     
-    // Add a small delay to simulate "thinking"
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
     try {
-      // Create a new game instance to avoid mutation issues
-      const gameCopy = new ChessJS(game.fen());
+      // Add a small delay to simulate "thinking"
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Make sure we're in computer mode and it's black's turn
-      if (gameMode !== 'computer' || gameCopy.turn() !== 'b') {
-        console.error("Computer tried to move when it shouldn't");
+      if (!isMounted.current) {
+        console.log("Component unmounted during thinking");
         setIsThinking(false);
         return;
       }
       
-      // Get all legal moves
-      const moves = gameCopy.moves({ verbose: true });
-      if (moves.length === 0) {
+      // Important: create a fresh game from the current state
+      const currentFen = game.fen();
+      console.log("Using FEN:", currentFen);
+      
+      // Get all legal moves for the current position
+      const legalMoves = game.moves({ verbose: true });
+      console.log("Legal moves for computer:", legalMoves);
+      
+      if (!legalMoves || legalMoves.length === 0) {
+        console.log("No legal moves available for computer");
         setIsThinking(false);
         return;
       }
       
-      // Simple AI: randomly select a move based on difficulty
-      let selectedMove;
+      // Select a move based on difficulty
+      let selectedMove: any;
       
       if (difficulty === 'easy') {
-        // Random move
-        selectedMove = moves[Math.floor(Math.random() * moves.length)];
+        // Random move selection for easy difficulty
+        const randomIndex = Math.floor(Math.random() * legalMoves.length);
+        selectedMove = legalMoves[randomIndex];
+        console.log("Easy difficulty: Random move selected:", selectedMove);
       } else {
-        // For medium and hard, evaluate moves more carefully (simplified)
-        const evaluatedMoves = moves.map(move => {
-          // Make the move on a clone of the current game
-          const tempGame = new ChessJS(gameCopy.fen());
-          tempGame.move(move);
-          
-          // Simple evaluation: count piece values
+        // Simple evaluation for medium and hard difficulties
+        const evaluatedMoves = legalMoves.map((move: any) => {
           let score = 0;
-          // Check if this move gives check
-          if (tempGame.isCheck()) score += 0.5;
-          // Check if this move can lead to checkmate
-          if (tempGame.isCheckmate()) score += 100;
+          
+          // Material value if capturing
+          if (move.captured) {
+            const pieceValues: Record<string, number> = {
+              'p': 1, 'n': 3, 'b': 3, 'r': 5, 'q': 9, 'k': 0
+            };
+            score += pieceValues[move.captured] || 0;
+          }
+          
+          // Clone game and make move to evaluate position
+          try {
+            const tempGame = new ChessJS(currentFen);
+            const result = tempGame.move({
+              from: move.from,
+              to: move.to,
+              promotion: move.promotion || undefined
+            });
+            
+            if (result) {
+              // Bonus for check and checkmate
+              if (tempGame.isCheck()) score += 0.5;
+              if (tempGame.isCheckmate()) score += 100;
+            }
+          } catch (error) {
+            console.error("Error evaluating move:", move, error);
+          }
           
           return { move, score };
         });
         
-        // Sort moves by score
+        // Sort by score
         evaluatedMoves.sort((a, b) => b.score - a.score);
+        console.log("Evaluated moves:", evaluatedMoves);
         
-        // For medium difficulty, sometimes pick a non-optimal move
-        if (difficulty === 'medium' && Math.random() < 0.3) {
-          const index = Math.floor(Math.random() * Math.min(3, evaluatedMoves.length));
-          selectedMove = evaluatedMoves[index].move;
+        if (difficulty === 'medium' && Math.random() < 0.3 && evaluatedMoves.length > 1) {
+          // Sometimes pick sub-optimal move for medium difficulty
+          const randomIndex = Math.floor(Math.random() * Math.min(3, evaluatedMoves.length));
+          selectedMove = evaluatedMoves[randomIndex].move;
+          console.log("Medium difficulty: Sub-optimal move selected:", selectedMove);
         } else {
-          // For hard, pick the best move
+          // Best move for hard difficulty
           selectedMove = evaluatedMoves[0].move;
+          console.log("Hard/Medium difficulty: Best move selected:", selectedMove);
         }
       }
       
-      // Get the piece that's moving
-      const movingPiece = gameCopy.get(selectedMove.from);
+      if (!selectedMove) {
+        console.error("Failed to select a move");
+        setIsThinking(false);
+        return;
+      }
       
-      // Make the selected move on the copy
-      const moveResult = gameCopy.move({
+      console.log("Computer will play move:", selectedMove);
+      
+      // Prepare move object
+      const moveObj = {
         from: selectedMove.from,
         to: selectedMove.to,
-        promotion: selectedMove.promotion
-      });
+        promotion: selectedMove.promotion || undefined
+      };
       
-      // Animate the piece movement
-      if (movingPiece) {
-        animatePieceMovement(selectedMove.from, selectedMove.to, movingPiece);
-      }
+      // IMPORTANT: Create a new chess instance to ensure we don't have stale state
+      const newGame = new ChessJS(currentFen);
+      console.log("New game created with FEN:", newGame.fen());
       
-      // Check if this was a capture or special move
-      if (moveResult.captured) {
-        playSound('capture');
-      } else if (moveResult.san.includes('O-O')) {
-        playSound('castle');
-      } else {
-        playSound('move');
-      }
-      
-      // Update the game state with the new game
-      setTimeout(() => {
-        setGame(gameCopy);
+      // Try to make the move
+      try {
+        const result = newGame.move(moveObj);
+        console.log("Move result:", result);
         
-        setLastMove({
-          from: selectedMove.from,
-          to: selectedMove.to,
-          promotion: selectedMove.promotion
-        });
+        if (!result) {
+          console.error("Move failed:", moveObj);
+          setIsThinking(false);
+          return;
+        }
         
-        setMoveHistory(prevHistory => [...prevHistory, moveResult.san]);
+        // Get the piece that was moved
+        const movedPiece = {
+          type: selectedMove.piece,
+          color: 'b' as 'b' | 'w'
+        };
+        
+        // Animate piece movement and play sound
+        animatePieceMovement(selectedMove.from, selectedMove.to, movedPiece);
+        
+        if (selectedMove.captured) {
+          playSound('capture');
+        } else if (selectedMove.san && selectedMove.san.includes('O-O')) {
+          playSound('castle');
+        } else {
+          playSound('move');
+        }
+        
+        // Update game state after animation completes
+        setTimeout(() => {
+          if (!isMounted.current) return;
+          
+          // Update game with the new state
+          setGame(newGame);
+          console.log("Game state updated after computer move");
+          
+          // Update last move for highlighting
+          setLastMove({
+            from: selectedMove.from,
+            to: selectedMove.to,
+            promotion: selectedMove.promotion
+          });
+          
+          // Add move to history
+          setMoveHistory(prevHistory => [...prevHistory, selectedMove.san]);
+          
+          // Clear thinking state
+          setIsThinking(false);
+          console.log("=== COMPUTER MOVE COMPLETE ===");
+        }, 500);
+      } catch (error) {
+        console.error("Error making move:", moveObj, error);
         setIsThinking(false);
-      }, 500); // Wait for animation to complete
+      }
     } catch (error) {
-      console.error("Error making computer move:", error);
+      console.error("Error in computer move process:", error);
       setIsThinking(false);
     }
   };
@@ -569,7 +716,7 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
           </CardHeader>
           
           <CardContent className={`p-6 ${isFullscreen ? 'flex-grow flex items-center justify-center' : ''}`}>
-            <div className={`relative ${isFullscreen ? 'max-h-full max-w-full h-full' : ''}`}>
+            <div className={`relative ${isFullscreen ? 'max-h-full' : ''}`} style={{ width: isFullscreen ? '80vh' : '100%' }}>
               {/* Files (A-H) labels at the top */}
               <div className="grid grid-cols-8 pl-6 pr-6 mb-1">
                 {Array(8).fill(0).map((_, i) => (
@@ -625,6 +772,7 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
                               transition-all duration-150 hover:brightness-110
                             `}
                             onClick={() => handleSquareClick(row, col)}
+                            style={{ height: '100%', width: '100%' }}
                           >
                             {/* Regular piece (not animating) */}
                             {piece && !(
@@ -632,20 +780,7 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
                               row === animatedPiece.from.row && 
                               col === animatedPiece.from.col
                             ) && (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <img 
-                                  src={PIECE_IMAGES[`${piece.color === 'b' ? piece.type.toLowerCase() : piece.type.toUpperCase()}`]} 
-                                  alt={`${piece.color === 'w' ? 'White' : 'Black'} ${
-                                    piece.type === 'p' ? 'Pawn' : 
-                                    piece.type === 'r' ? 'Rook' : 
-                                    piece.type === 'n' ? 'Knight' : 
-                                    piece.type === 'b' ? 'Bishop' : 
-                                    piece.type === 'q' ? 'Queen' : 'King'
-                                  }`}
-                                  className="w-full h-full object-contain p-1"
-                                  draggable={false}
-                                />
-                              </div>
+                              <ChessPiece piece={`${piece.color === 'b' ? piece.type.toLowerCase() : piece.type.toUpperCase()}`} />
                             )}
                             
                             {/* Legal move indicators */}
@@ -680,11 +815,7 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
                         transform: `translate(${(animatedPiece.to.col - animatedPiece.from.col) * 100}%, ${(animatedPiece.to.row - animatedPiece.from.row) * 100}%)`,
                       }}
                     >
-                      <img 
-                        src={PIECE_IMAGES[animatedPiece.piece]} 
-                        alt="Moving piece"
-                        className="w-full h-full object-contain p-1"
-                      />
+                      <ChessPiece piece={animatedPiece.piece} isAnimated={true} />
                     </div>
                   )}
                 </div>
