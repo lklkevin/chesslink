@@ -12,6 +12,7 @@ const navLinks: NavLink[] = [
   { name: 'Hardware', href: '#hardware' },
   { name: 'Software', href: '#software' },
   { name: 'Demo', href: '/demo' },
+  { name: 'Play Chess', href: '/play' },
 ];
 
 const Navbar: React.FC = () => {
