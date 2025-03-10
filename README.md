@@ -24,9 +24,9 @@
 
 ### Core Hardware Components
 
-- **Sensor Array**: 64-square (8×8) matrix of Hall effect sensors that detect magnetic chess pieces
+- **Sensor Array**: 64-square (8×8) matrix of Hall effect sensors that detect magnetic chess pieces, 64-square (8x8) matrix of phototransistors which measure current, 64-square (8×8) matrix of RGB LEDs, 64-square (8×8) matrix of IR emitters.
 - **LED System**: RGB LEDs integrated into each square for visual feedback and move guidance
-- **Microcontroller Unit**: ESP32-C3 (primary) combined with Arduino Nano (co-processor)
+- **Microcontroller Unit**: ESP32-C3 (master) combined with 16 ATtiny microcontrollers (slave) communicating through UART
 - **PCB Design**: Custom multi-layer PCB (currently in development) integrating all electronic components
 - **Power System**: 5V system with regulated power distribution for sensors, LEDs, and microcontrollers
 - **I/O Interface**: Serial/USB connection to host application, with Bluetooth/WiFi capabilities
@@ -36,7 +36,7 @@
 The team is currently developing a custom PCB solution that will:
 
 - **Integrate all sensor components** into a compact, reliable board design
-- **Employ multiplexing** to efficiently manage 64 sensor inputs with minimal pins
+- **Employ multiple controllers** to efficiently manage 64 squares with minimal pins and low latency
 - **Include dedicated LED drivers** for controlling RGB LEDs at each board position
 - **Provide noise filtering** to ensure accurate sensor readings
 - **Support multiple communication protocols** including I2C, UART, and SPI
@@ -44,12 +44,22 @@ The team is currently developing a custom PCB solution that will:
 
 ### Sensor Technology
 
-The ChessLink system uses Hall effect sensors placed beneath each square of the chessboard. These sensors:
+In prototype 1, the ChessLink system uses the following two design mechanisms for detecting pieces: 
 
+1. Hall effect sensors placed beneath each square of the chessboard. These sensors:
 - Detect the magnetic field of specially prepared chess pieces
 - Offer reliable, precise detection regardless of lighting conditions
 - Operate with minimal power consumption
 - Provide long-term reliability without mechanical wear
+
+2. Phototransisters placed beneath each square of the chessboard. These sensors: 
+- Detect the analog light emitance reflectance of a piece based on shined light against the bottom of a piece.
+   - Enables both RGB LED emittance and IR LED emmitance detection at 940nm.
+- Offer cheap, piece and piece-type detection
+- Operates with minimal power
+- Wired to a pull-down resister to ensure that ADC voltage can be measured. 
+
+Based on results of the prototype 1 PCB, the board will be adjusted accordingly. The board can utilize multiple sensors combined to provide accurate results. As the Hall-Effect system detects that a piece exists but does not detect which piece the two can be utilized together to create a reliable system of detection.
 
 ### Physical Dimensions
 
@@ -66,26 +76,27 @@ The ChessLink system uses Hall effect sensors placed beneath each square of the 
 The sensor array is organized in an 8×8 matrix configuration:
 
 ```
-+-------------+    +---------------+    +--------------+
-| Sensor      |    | Multiplexers  |    | ESP32-C3     |
-| Matrix (8×8)|====>  CD74HC4067   |====>              |
-|             |    | (4 units)     |    | Main         |
-+-------------+    +---------------+    | Controller   |
-                                        |              |
-+-------------+    +---------------+    |              |
-| LED         |    | LED Drivers   |<====              |
-| Matrix (8×8)|<====  TLC5940      |    |              |
-|             |    | (2 units)     |    |              |
-+-------------+    +---------------+    +--------------+
-                                             |
-                                             | I2C
-                                             v
-                                        +--------------+
-                                        | Arduino Nano |
-                                        | Co-processor |
-                                        | (Optional)   |
-                                        +--------------+
++-----------------+    +-----------------+    +-----------------+
+| Sensor Module   |    | ATtiny1616 (x16) |    | ESP32-C3        |
+| Phototransistor|====> Each Handles 2×2 |====> Main Controller |
+| Hall Effect     |    | Grid Section     |    | (UART Master)   |
+| IR Emitter      |    | UART to ESP32    |    |                 |
+| RGB LEDs        |    | (4 ATtiny in P1) |    |                 |
++-----------------+    +-----------------+    +-----------------+
+                                                             
+                                               | USB to PC (Debugging)
+                                               v
+                                        +-----------------+
+                                        | CP2102          |
+                                        | USB-to-Serial   |
+                                        | Converter       |
+                                        +-----------------+
 ```
+
+Prototype 1: 4 ATtiny1616 -> Covers 16 squares (4×4)
+
+Final Design: 16 ATtiny1616 -> Covers 64 squares (8×8)
+
 
 ---
 
