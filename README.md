@@ -1,279 +1,148 @@
-# Chesslink - Interactive Smart Chessboard
+# ChessLink - Smart Hardware Chess Interface
 
-This repository contains the source code and documentation for a **smart chessboard** that detects piece movements, tracks games in real time, and provides training features. It combines physical gameplay with digital benefits like move suggestions, audio feedback, and online connectivity.
+![ChessLink Banner](public/images/chesslink_banner.png)
+
+**ChessLink** is a smart chess interface that bridges physical chess with digital capabilities. The hardware-focused system uses custom sensor arrays to detect moves on a physical board and synchronize them with a digital platform for analysis, training, and connected play.
 
 ---
 
 ## Table of Contents
 
-1. [Overview](#overview)  
-2. [Features](#features)  
-3. [Hardware Overview](#hardware-overview)  
-4. [Software Overview](#software-overview)  
-5. [System Architecture](#system-architecture)  
-6. [Installation](#installation)  
-7. [Usage](#usage)  
-8. [Configuration](#configuration)  
+1. [Hardware Architecture](#hardware-architecture)
+2. [System Overview](#system-overview)
+3. [Features](#features)
+4. [Software Components](#software-components)
+5. [Development Status](#development-status)
+6. [Installation](#installation)
+7. [Usage](#usage)
+8. [Configuration](#configuration)
 9. [Contributing](#contributing)
+
 ---
 
-## Overview
+## Hardware Architecture
 
-**What problem it solves:**  
-- Preserves the **physical** feel of playing chess while adding **digital** capabilities like move recording and analysis.  
-- Assists beginners in learning with real-time feedback and highlighted valid moves.  
-- Enables streamlined post-game analysis for players who want to review their decisions and improve.
+### Core Hardware Components
 
-**Who it is for:**  
-- Chess enthusiasts seeking a hybrid of real-board and online analysis.  
-- Beginners who learn best by doing and receiving immediate feedback.  
-- Organized events and streamers who need real-time, interactive move tracking.
+- **Sensor Array**: 64-square (8×8) matrix of Hall effect sensors that detect magnetic chess pieces
+- **LED System**: RGB LEDs integrated into each square for visual feedback and move guidance
+- **Microcontroller Unit**: ESP32-C3 (primary) combined with Arduino Nano (co-processor)
+- **PCB Design**: Custom multi-layer PCB (currently in development) integrating all electronic components
+- **Power System**: 5V system with regulated power distribution for sensors, LEDs, and microcontrollers
+- **I/O Interface**: Serial/USB connection to host application, with Bluetooth/WiFi capabilities
 
-**Key insights:**  
-- All piece movements are captured automatically, no more manual recording of games.  
-- Integrates with a **web application** to store and analyze moves using a chess engine or other learning tools.
+### PCB Development (In Progress)
+
+The team is currently developing a custom PCB solution that will:
+
+- **Integrate all sensor components** into a compact, reliable board design
+- **Employ multiplexing** to efficiently manage 64 sensor inputs with minimal pins
+- **Include dedicated LED drivers** for controlling RGB LEDs at each board position
+- **Provide noise filtering** to ensure accurate sensor readings
+- **Support multiple communication protocols** including I2C, UART, and SPI
+- **Feature expansion headers** for future hardware add-ons
+
+### Sensor Technology
+
+The ChessLink system uses Hall effect sensors placed beneath each square of the chessboard. These sensors:
+
+- Detect the magnetic field of specially prepared chess pieces
+- Offer reliable, precise detection regardless of lighting conditions
+- Operate with minimal power consumption
+- Provide long-term reliability without mechanical wear
+
+### Physical Dimensions
+
+| Component | Specification |
+|-----------|---------------|
+| Board Size | Standard tournament size: 50cm × 50cm |
+| Square Size | 5.0cm × 5.0cm |
+| Sensor Spacing | 6.25cm center-to-center |
+| Board Thickness | 2.5cm including electronics |
+| Chess Piece Base | 3.8cm diameter with embedded magnets |
+
+### Circuit Design
+
+The sensor array is organized in an 8×8 matrix configuration:
+
+```
++-------------+    +---------------+    +--------------+
+| Sensor      |    | Multiplexers  |    | ESP32-C3     |
+| Matrix (8×8)|====>  CD74HC4067   |====>              |
+|             |    | (4 units)     |    | Main         |
++-------------+    +---------------+    | Controller   |
+                                        |              |
++-------------+    +---------------+    |              |
+| LED         |    | LED Drivers   |<====              |
+| Matrix (8×8)|<====  TLC5940      |    |              |
+|             |    | (2 units)     |    |              |
++-------------+    +---------------+    +--------------+
+                                             |
+                                             | I2C
+                                             v
+                                        +--------------+
+                                        | Arduino Nano |
+                                        | Co-processor |
+                                        | (Optional)   |
+                                        +--------------+
+```
+
+---
+
+## System Overview
+
+ChessLink creates a seamless connection between physical chess play and digital analysis by:
+
+1. **Detecting physical moves** through the sensor array
+2. **Validating moves** against chess rules
+3. **Providing feedback** through LEDs and sound
+4. **Synchronizing** with the web application
+5. **Enabling analysis** and training features
+
+The system is designed for:
+- Chess enthusiasts wanting physical play with digital benefits
+- Beginners learning through interactive guidance
+- Events and streamers needing real-time digital tracking
 
 ---
 
 ## Features
 
-- **Real-Time Move Tracking**  
-  Detects piece movements via sensors and updates a digital interface.
-
-- **LED Feedback**  
-  Highlights valid moves, checks, or other important chess events.
-
-- **Audio Prompts**  
-  Announces moves (e.g., in algebraic notation) and signals special situations like check or checkmate.
-
-- **Online Integration**  
-  Syncs with a web application to record games, provide analysis, or connect to remote opponents.
-
-- **Training & Analysis Modes**  
-  - **Training**: Offers real-time suggestions and visual/audio guidance.  
-  - **Analysis**: Provides post-game data and best-move recommendations.
-
-- **Speech and Sound Features**  
-  - **Move Announcements**: Verbal descriptions of each move using speech synthesis.
-  - **Game Event Sounds**: Distinct sound effects for different chess events (captures, castle, check, etc.).
-  - **Customizable Settings**: Toggle speech and sound effects independently.
-  - **Accessibility**: Makes the game more accessible for players with visual impairments.
+- **Real-Time Move Detection**: Automatically captures piece movements and positions
+- **Visual Guidance**: LED system highlights valid moves, checks, and training suggestions
+- **Audio Feedback**: Sound effects and spoken move announcements
+- **Training Mode**: Receive move suggestions and error notifications
+- **Analysis Integration**: Connect with chess engines for post-game analysis
+- **Game Recording**: Automatically stores game history for review
+- **Accessibility Features**: Audio announcements and high-contrast visual cues
 
 ---
 
-## Hardware Overview
+## Software Components
 
-- **Sensors**: Hall-effect sensors, near-IR sensors, or photodiodes to detect when pieces are moved or lifted.  
-- **Arduino Nano (or similar)**: Reads sensor data and sends updates via serial communication.  
-- **LEDs**: Provide guidance for moves or highlight errors and special scenarios.  
-- **Board Size**: Prototype is 4x4 for proof of concept; the ultimate goal is a full 8x8 board.
+The software stack complements the hardware system:
 
-This approach preserves the physical experience of chess while adding an intelligent, interactive layer.
+1. **Firmware**: ESP32/Arduino code handling sensor data and LED control
+2. **Web Application**: React-based interface visualizing the board and providing analysis
+3. **API Layer**: Connects hardware with software systems
+4. **Optional Server**: For online play and advanced features
 
----
-
-## Software Overview
-
-1. **Board Sensors → Arduino**  
-   As soon as you move a piece, the board's sensors note the change in position.
-
-2. **Arduino → Web App**  
-   The Arduino sends the move data via serial or other communication channel to our Node.js-based server.
-
-3. **Web App & Database**  
-   - Logs moves, stores games, and delivers real-time visual updates.  
-   - Offers analysis features, user accounts, and game history.
-
-4. **Feedback to the Board**  
-   - LED lights or audio prompts may be triggered based on the game state or training mode settings.
+See the [software documentation](app/README.md) for detailed information.
 
 ---
 
-## System Architecture
+## Development Status
 
-The ChessLink system is designed with a layered architecture that connects physical chess pieces to a digital platform through several interconnected components:
+**Current Status: Hardware Prototype Phase**
 
-### 1. Physical Layer
-
-#### Chessboard & Sensor Array
-- **Hall Effect Sensors**: Each square contains an IR sensor with an RGB LED to detect piece presence and provide visual feedback
-- **Digital I/O**: 1 digital pin per sensor module to read the sensor state
-- **Sensor Arrangement**: 8×8 grid (64 squares) with consistent 3cm spacing between sensors
-- **Power Requirements**: 5V power supply for sensors and microcontroller components
-
-#### Microcontroller System
-- **ESP32-C3 Microcontroller**: 
-  - Central processing unit running at 160MHz
-  - Handles sensor data collection, board state determination, and communication
-  - Runs frequent scanning cycles (every second) to detect changes in piece positions
-  - Converts raw sensor readings into a digital representation of the chessboard
-  - Processes the data to determine legal moves and board state
-  - Translates the board state into FEN notation for software integration
-
-- **Arduino Nano**: 
-  - Secondary microcontroller acting as a co-processor when needed
-  - Connected to the ESP32-C3 through I2C interface
-  - Assists with sensor reading and processing tasks
-
-- **Connectivity Options**:
-  - **WiFi Module**: For wireless connectivity to the network
-  - **Bluetooth (BLE) 5**: For direct connection to mobile devices or computers
-  - **TCP Socket/WebSocket/Serial Communication**: Various protocol options to connect with the software application
-
-### 2. Software Layer
-
-#### Local Software Application
-- **Localized Board State Management**:
-  - Maintains the current state of the chessboard
-  - Tracks the history of moves and past positions
-  - Validates moves based on chess rules
-  - Updates the FEN (Forsyth–Edwards Notation) representation
-  - Performs regular checks for board state validity
-
-- **User Interface Components**:
-  - Sends voice prompts when pieces are moved
-  - Sends LED signals to indicate where moves are legal
-  - Highlights squares for move suggestions
-  - Provides audio feedback on game state
-
-- **Local Game Visualization**:
-  - Web-based interface or desktop application
-  - Renders the current board visually
-  - Displays game information and history
-  - Python app for more advanced functionality
-
-#### Server-Side Architecture (Optional)
-
-- **Backend Server**:
-  - Built with Python or Node.js
-  - Accepts JSON data regardless of transmission method
-  - Handles API requests
-  - Stores history of all games played
-  - Updates games for web app viewing
-  - Allows for multiple games on multiple servers to be played simultaneously
-
-- **Database System**:
-  - Stores game history, user profiles, and analysis data
-  - Provides persistent storage across sessions
-  - Enables game replay and analysis features
-
-#### Frontend Server
-- **Web Application**:
-  - Built with Node.js and React
-  - Responsive design with Tailwind CSS
-  - Real-time updates of ongoing games
-  - Analysis tools and interfaces
-
-### 3. Communication Pathways
-
-#### Hardware to Software Communication
-- **Processor to App**: 
-  - Data flow from the microcontroller system to the local software
-  - Uses TCP socket, mounted files, or serial connection depending on setup
-
-#### App to Processor Communication
-- **Software commands to hardware**:
-  - Control signals for LED feedback
-  - Request for board state updates
-  - Training mode instructions
-
-#### Local to Server Communication
-- **API/JSON Data Exchange**:
-  - Secure transmission of game data
-  - Authentication for user-specific features
-  - Real-time updates through WebSocket connections
-
-### 4. System Integration
-
-The entire system follows a layered approach where each component has a specific responsibility:
-
-1. **Sensing Layer**: Detects the physical position of chess pieces
-2. **Processing Layer**: Converts sensor data into chess notation and game state
-3. **Application Layer**: Provides user interface and game management features
-4. **Optional Server Layer**: Enables online features, persistent storage, and multiplayer capabilities
-
-This architecture allows for flexibility in deployment - the system can work as a standalone device with the local application, or as a connected device with full server integration for advanced features.
-
-### 5. System Architecture Diagram
-
-```
-+--------------------------------------------------------------------------------------------+
-|                                CHESSLINK SYSTEM ARCHITECTURE                               |
-+--------------------------------------------------------------------------------------------+
-
-+------------------------+        +------------------------+        +------------------------+
-|   PHYSICAL LAYER       |        |   PROCESSING LAYER     |        |   APPLICATION LAYER    |
-|                        |        |                        |        |                        |
-|  +------------------+  |        |  +------------------+  |        |  +------------------+  |
-|  | Chess Board      |  |        |  | ESP32-C3         |  |        |  | Local Software   |  |
-|  |                  |  |        |  | Microcontroller  |  |        |  | Application      |  |
-|  | | +-------+      |  |        |  |                  |  |        |  |                  |  |
-|  | | | IR    |  x64 |  |        |  | +-------------+  |  |        |  | | Board State |  |  |
-|  | | | Sensor|      |  |        |  | | Sensor Data |  |  |        |  | | Management  |  |  |
-|  | | | + LED |      |  |        |  | | Processing  |  |  |        |  | |             |  |  |
-|  | | +-------+      |  |        |  | +-------------+  |  |        |  | |             |  |  |
-|  | |                  |  |        |  |                  |  |        |  | |             |  |  |
-|  | | +-----------+    |  |        |  | +-------------+  |  |        |  | |             |  |  |
-|  | | | Chess     |    |  |        |  | | FEN         |  |  |        |  | |             |  |  |
-|  | | | Pieces    |    |  |        |  | | Conversion  |  |  |        |  | |             |  |  |
-|  | | +-----------+    |  |        |  | +-------------+  |  |        |  | |             |  |  |
-|  | +------------------+  |        |  |                  |  |        |  | |             |  |  |
-|  |          |             |        |  | +-------------+  |  |        |  | |             |  |  |
-|  |  +------------------+  |        |  | | Move        |  |  |        |  | |             |  |  |
-|  |  | Arduino Nano     |<------------>| | Validation  |  |  |        |  | |             |  |  |
-|  |  | (Co-processor)   |  |        |  | +-------------+  |  |        |  | |             |  |  |
-|  |  +------------------+  |        |  +------------------+  |        |  | |             |  |  |
-|  +------------------------+        +------------------------+        +------------------------+
-           ^                                 ^                                 ^
-           |                                 |                                 |
-           |                                 |                                 |
-           v                                 v                                 v
-+--------------------------------------------------------------------------------------------+
-|                                   COMMUNICATION LAYER                                      |
-|                                                                                            |
-|  +-------------+                  +----------------+               +--------------------+  |
-|  | I2C         |                  | TCP/Serial/    |               | Web API/WebSocket  |  |
-|  | Interface   |<---------------->| Bluetooth      |<------------->| Communication      |  |
-|  | +-------------+                  +----------------+               +--------------------+  |
-+--------------------------------------------------------------------------------------------+
-           ^                                                             ^
-           |                                                             |
-           v                                                             v
-+------------------------+                                    +------------------------+
-|   OPTIONAL SERVER      |                                    |   EXTERNAL SYSTEMS     |
-|   LAYER                |                                    |                        |
-|                        |                                    |  +------------------+  |
-|  +------------------+  |                                    |  | Chess Engines    |  |
-|  | Backend Server   |  |                                    |  |                  |  |
-|  | (Node.js/Python) |  |                                    |  | +-------------+  |  |
-|  |                  |  |                                    |  | | Move        |  |  |
-|  | +-------------+  |  |                                    |  | | Analysis    |  |  |
-|  | | Game        |  |  |                                    |  | +-------------+  |  |
-|  | | Storage     |  |  |                                    |  +------------------+  |
-|  | +-------------+  |  |                                    |                        |
-|  |                  |  |                                    |  +------------------+  |
-|  | +-------------+  |  |                                    |  | Online Chess     |  |
-|  | | User        |  |  |                                    |  | Platforms        |  |
-|  | | Management  |  |  |                                    |  +------------------+  |
-|  | +-------------+  |  |                                    |                        |
-|  +------------------+  |                                    +------------------------+
-|                        |
-|  +------------------+  |                DATA FLOW DIRECTION
-|  | Database         |  |                ------------------>
-|  |                  |  |                                 
-|  | +-------------+  |  |                CHESS MOVES FLOW:
-|  | | Game History|  |  |                1. Physical piece movement detected by sensors
-|  | +-------------+  |  |                2. Raw sensor data processed by microcontrollers
-|  |                  |  |                3. Board state converted to FEN notation
-|  | +-------------+  |  |                4. Move validated against chess rules
-|  | | User Data   |  |  |                5. Valid moves sent to software application
-|  | +-------------+  |  |                6. Game state updated and visualized
-|  | +-------------+  |  |                7. Optional server storage and analysis
-|  | | Game History|  |  |                8. Optional feedback sent back to board (LEDs)
-|  | +-------------+  |  |
-|  +------------------+  |
-+------------------------+
-```
+- ✅ Hardware architecture designed
+- ✅ Sensor and LED testing completed
+- ✅ Software interface working
+- 🔄 PCB design in progress
+- 🔄 Final component selection being evaluated
+- 🔄 4×4 prototype board operational
+- ⬜ Full 8×8 board assembly
+- ⬜ Case design and manufacturing
 
 ---
 
@@ -283,73 +152,66 @@ This architecture allows for flexibility in deployment - the system can work as 
    ```bash
    git clone https://github.com/lklkevin/chesslink.git
    cd chesslink
+   ```
 
-2. **Install Dependencies**  
-   Make sure you have [Node.js](https://nodejs.org/) installed, then run:
-
+2. **Install Software Dependencies**  
    ```bash
    npm install
    ```
 
-   This command installs all the Node.js packages listed in `package.json` that are required for the application.
-
-3. **Arduino Setup (Optional)**  
-   - **Install the Arduino IDE:** Download from [here](https://www.arduino.cc/en/software).  
-   - **Upload Firmware:** Connect your Arduino Nano (or compatible board) and upload the sketch from the `firmware` folder.
-
-4. **Serverless/Hosting Setup (Optional)**  
-   - **Configure Serverless Functions:** If deploying your web app serverlessly (e.g., on Netlify, Vercel, or AWS Lambda), set up your functions and environment variables according to your platform's guidelines.
+3. **Hardware Setup (for developers)**
+   - Upload the appropriate firmware to your ESP32/Arduino using the Arduino IDE
+   - Connect the prototype board via USB
+   - See [hardware setup guide](hardware/SETUP.md) for detailed instructions
 
 ---
+
 ## Usage
 
-1. **Start the Development Server**  
+1. **Start the Application**  
    ```bash
    npm run dev
    ```
-   **Visit [http://localhost:8080](http://localhost:8080)** to view the web interface.
+   Access the interface at [http://localhost:8080](http://localhost:8080)
 
-2. **Connect the Chessboard**  
-   - **Power On the Board:** Ensure your Arduino-based chessboard is powered and connected.  
-   - **Real-Time Updates:** As you move pieces, the sensor data is transmitted to the web application, reflecting live game updates.
+2. **Connect Hardware** (if available)
+   - Connect the ChessLink board via USB
+   - The app will automatically detect and connect to the board
 
-3. **Training Mode**  
-   - **Enable Training Mode:** Receive LED and audio prompts guiding you with valid moves or alerting you to potential mistakes.
-
-4. **Analysis Mode**  
-   - **Access Saved Games:** View move-by-move breakdowns and receive recommendations from a chess engine or analysis library.
-
-5. **Build for Production**  
-   ```bash
-   npm run build
-   ```
-   **Deploy the built output along with your serverless functions to your chosen hosting platform.**
+3. **Available Modes**
+   - **Digital-only mode**: Play on screen without physical board
+   - **Connected mode**: Synchronize physical and digital boards
+   - **Training mode**: Receive move suggestions and feedback
+   - **Analysis mode**: Review games with engine analysis
 
 ---
 
 ## Configuration
 
-- **Environment Variables:**  
-  Create a `.env` file (or set variables in your hosting platform). Examples include:
-  - `PORT`
-  - Database connection strings
-  - API keys for chess engines, etc.
-
-- **Arduino Firmware:**  
-  Adjust sensor thresholds, LED brightness, or communication protocols in the `.ino` file as needed.
-
-- **Web Application Settings:**  
-  Tweak configuration files (e.g., `config.js`) to adjust UI settings, default modes, or integrate external services.
+- **Hardware Configuration**: See `hardware/firmware/config.h` for sensor settings
+- **Software Environment Variables**: Create a `.env` file for API keys and database connections
+- **Sound Settings**: Configure audio feedback at [/sounds](http://localhost:8080/sounds)
 
 ---
 
 ## Contributing
 
-We welcome pull requests, bug reports, and feature suggestions! To contribute:
+We welcome contributions, especially in hardware design and firmware development!
 
 1. **Fork the Repository**  
-2. **Create a New Feature Branch** from the `main` branch.  
-3. **Commit and Push Your Changes** with clear commit messages.  
-4. **Open a Pull Request** on GitHub, describing your changes and linking any relevant issues.
+2. **Create a Feature Branch**: `git checkout -b feature/amazing-feature`  
+3. **Commit Your Changes**: `git commit -m 'Add amazing feature'`  
+4. **Push to Branch**: `git push origin feature/amazing-feature`  
+5. **Open a Pull Request**
 
-*For major changes, consider opening an issue first to discuss your proposed improvements.*
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+---
+
+## License
+
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+*Documentation last updated: August 2023*
