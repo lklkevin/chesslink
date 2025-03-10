@@ -53,6 +53,12 @@ This repository contains the source code and documentation for a **smart chessbo
   - **Training**: Offers real-time suggestions and visual/audio guidance.  
   - **Analysis**: Provides post-game data and best-move recommendations.
 
+- **Speech and Sound Features**  
+  - **Move Announcements**: Verbal descriptions of each move using speech synthesis.
+  - **Game Event Sounds**: Distinct sound effects for different chess events (captures, castle, check, etc.).
+  - **Customizable Settings**: Toggle speech and sound effects independently.
+  - **Accessibility**: Makes the game more accessible for players with visual impairments.
+
 ---
 
 ## Hardware Overview
@@ -201,23 +207,23 @@ This architecture allows for flexibility in deployment - the system can work as 
 |  +------------------+  |        |  +------------------+  |        |  +------------------+  |
 |  | Chess Board      |  |        |  | ESP32-C3         |  |        |  | Local Software   |  |
 |  |                  |  |        |  | Microcontroller  |  |        |  | Application      |  |
-|  | +-------+        |  |        |  |                  |  |        |  |                  |  |
-|  | | IR    |  x64   |  |        |  | +-------------+  |  |        |  | +-------------+  |  |
-|  | | Sensor|        |  |        |  | | Sensor Data |  |  |        |  | | Board State |  |  |
-|  | | + LED |        |  |        |  | | Processing  |  |  |        |  | | Management  |  |  |
-|  | +-------+        |  |        |  | +-------------+  |  |        |  | +-------------+  |  |
-|  |                  |  |        |  |                  |  |        |  |                  |  |
-|  | +-----------+    |  |        |  | +-------------+  |  |        |  | +-------------+  |  |
-|  | | Chess     |    |  |        |  | | FEN         |  |  |        |  | | Game UI &   |  |  |
-|  | | Pieces    |    |  |        |  | | Conversion  |  |  |        |  | | Visuals     |  |  |
-|  | +-----------+    |  |        |  | +-------------+  |  |        |  | +-------------+  |  |
-|  +------------------+  |        |  |                  |  |        |  |                  |  |
-|          |             |        |  | +-------------+  |  |        |  | +-------------+  |  |
-|  +------------------+  |        |  | | Move        |  |  |        |  | | Move        |  |  |
-|  | Arduino Nano     |<------------>| | Validation  |  |  |        |  | | History &   |  |  |
-|  | (Co-processor)   |  |        |  | +-------------+  |  |        |  | | Analysis    |  |  |
-|  +------------------+  |        |  +------------------+  |        |  +------------------+  |
-+------------------------+        +------------------------+        +------------------------+
+|  | | +-------+      |  |        |  |                  |  |        |  |                  |  |
+|  | | | IR    |  x64 |  |        |  | +-------------+  |  |        |  | | Board State |  |  |
+|  | | | Sensor|      |  |        |  | | Sensor Data |  |  |        |  | | Management  |  |  |
+|  | | | + LED |      |  |        |  | | Processing  |  |  |        |  | |             |  |  |
+|  | | +-------+      |  |        |  | +-------------+  |  |        |  | |             |  |  |
+|  | |                  |  |        |  |                  |  |        |  | |             |  |  |
+|  | | +-----------+    |  |        |  | +-------------+  |  |        |  | |             |  |  |
+|  | | | Chess     |    |  |        |  | | FEN         |  |  |        |  | |             |  |  |
+|  | | | Pieces    |    |  |        |  | | Conversion  |  |  |        |  | |             |  |  |
+|  | | +-----------+    |  |        |  | +-------------+  |  |        |  | |             |  |  |
+|  | +------------------+  |        |  |                  |  |        |  | |             |  |  |
+|  |          |             |        |  | +-------------+  |  |        |  | |             |  |  |
+|  |  +------------------+  |        |  | | Move        |  |  |        |  | |             |  |  |
+|  |  | Arduino Nano     |<------------>| | Validation  |  |  |        |  | |             |  |  |
+|  |  | (Co-processor)   |  |        |  | +-------------+  |  |        |  | |             |  |  |
+|  |  +------------------+  |        |  +------------------+  |        |  | |             |  |  |
+|  +------------------------+        +------------------------+        +------------------------+
            ^                                 ^                                 ^
            |                                 |                                 |
            |                                 |                                 |
@@ -228,7 +234,7 @@ This architecture allows for flexibility in deployment - the system can work as 
 |  +-------------+                  +----------------+               +--------------------+  |
 |  | I2C         |                  | TCP/Serial/    |               | Web API/WebSocket  |  |
 |  | Interface   |<---------------->| Bluetooth      |<------------->| Communication      |  |
-|  +-------------+                  +----------------+               +--------------------+  |
+|  | +-------------+                  +----------------+               +--------------------+  |
 +--------------------------------------------------------------------------------------------+
            ^                                                             ^
            |                                                             |
@@ -262,8 +268,11 @@ This architecture allows for flexibility in deployment - the system can work as 
 |  | +-------------+  |  |                4. Move validated against chess rules
 |  | | User Data   |  |  |                5. Valid moves sent to software application
 |  | +-------------+  |  |                6. Game state updated and visualized
-|  +------------------+  |                7. Optional server storage and analysis
-+------------------------+                8. Optional feedback sent back to board (LEDs)
+|  | +-------------+  |  |                7. Optional server storage and analysis
+|  | | Game History|  |  |                8. Optional feedback sent back to board (LEDs)
+|  | +-------------+  |  |
+|  +------------------+  |
++------------------------+
 ```
 
 ---
