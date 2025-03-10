@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import DemoPage from "./pages/Demo";
 import PlayPage from "./pages/Play";
+import SoundSettingsPage from "./pages/SoundSettings";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/demo" element={<DemoPage />} />
           <Route path="/play" element={<PlayPage />} />
+          <Route path="/sounds" element={<SoundSettingsPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

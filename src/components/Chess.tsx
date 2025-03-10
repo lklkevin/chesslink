@@ -5,7 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Chess as ChessJS } from 'chess.js';
-import { AlertCircle, RotateCcw, Send, Info, Settings, Zap, Maximize, Minimize, Volume2, VolumeX } from 'lucide-react';
+import { AlertCircle, RotateCcw, Send, Info, Settings, Zap, Maximize, Minimize, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
+import { 
+  SOUNDS, 
+  playSound, 
+  preloadSounds,
+  speakText,
+  getMoveText,
+  announceGameState
+} from '@/lib/soundUtils';
 
 // Chess piece SVG mappings with fallbacks
 const PIECE_IMAGES: Record<string, string> = {
@@ -104,21 +112,17 @@ const DIFFICULTY_LEVELS = {
   hard: 3
 };
 
-// Sound files
-const SOUNDS = {
-  move: '/sounds/move.mp3',
-  capture: '/sounds/capture.mp3',
-  check: '/sounds/check.mp3',
-  castle: '/sounds/castle.mp3',
-  victory: '/sounds/victory.mp3',
-  draw: '/sounds/draw.mp3',
-  illegal: '/sounds/illegal.mp3',
-};
-
 // Type definitions
 type Square = string;
 type Piece = { type: string; color: 'w' | 'b' };
 type Move = { from: Square; to: Square; promotion?: string };
+
+// Add sound settings type
+interface SoundSettings {
+  effects: boolean;
+  speech: boolean;
+  volume: number;
+}
 
 interface ChessProps {
   className?: string;
@@ -161,6 +165,13 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
     to: { row: number; col: number };
   } | null>(null);
 
+  // Add sound settings state
+  const [soundSettings, setSoundSettings] = useState<SoundSettings>({
+    effects: true,
+    speech: true,
+    volume: 0.5
+  });
+
   // Initialize the game and board
   useEffect(() => {
     console.log("Component mounted, initializing chess game...");
@@ -186,11 +197,8 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
       console.error("Error initializing chess game:", e);
     }
     
-    // Create audio elements
-    Object.entries(SOUNDS).forEach(([key, src]) => {
-      const audio = new Audio(src);
-      audio.preload = 'auto';
-    });
+    // Preload all audio files
+    preloadSounds();
     
     return () => {
       console.log("Component unmounting...");
@@ -295,16 +303,34 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
   };
 
   // Play sound effect if enabled
-  const playSound = (soundName: keyof typeof SOUNDS) => {
-    if (!soundEnabled) return;
-    
-    try {
-      const audio = new Audio(SOUNDS[soundName]);
-      audio.volume = 0.5;
-      audio.play().catch(e => console.error("Error playing sound:", e));
-    } catch (e) {
-      console.error("Error with audio:", e);
+  const playSoundEffect = (soundName: keyof typeof SOUNDS) => {
+    if (soundSettings.effects) {
+      playSound(soundName, soundSettings.volume);
     }
+  };
+
+  // Speak move announcement if enabled
+  const announceMoveWithSpeech = (moveResult: any) => {
+    if (soundSettings.speech) {
+      const announcement = getMoveText(moveResult);
+      speakText(announcement);
+    }
+  };
+
+  // Toggle sound effects
+  const toggleSoundEffects = () => {
+    setSoundSettings(prev => ({
+      ...prev,
+      effects: !prev.effects
+    }));
+  };
+
+  // Toggle speech
+  const toggleSpeech = () => {
+    setSoundSettings(prev => ({
+      ...prev,
+      speech: !prev.speech
+    }));
   };
 
   // Toggle fullscreen mode
@@ -351,7 +377,7 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
     // Prevent moves if computer is thinking or if it's computer's turn in computer mode
     if (isThinking || (gameMode === 'computer' && currentPlayer === 'b')) {
       console.log("Cannot move: computer is thinking or it's computer's turn");
-      playSound('illegal');
+      playSoundEffect('illegal');
       return;
     }
     
@@ -389,14 +415,21 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
         if (moveResult) {
           console.log("Move successful:", moveResult);
           
-          // Check if this was a capture or special move
+          // Check if this was a capture or special move for sound effects
           if (moveResult.captured) {
-            playSound('capture');
+            playSoundEffect('capture');
           } else if (moveResult.san.includes('O-O')) {
-            playSound('castle');
+            playSoundEffect('castle');
+          } else if (moveResult.flags.includes('e')) { // en passant
+            playSoundEffect('enPassant');
+          } else if (moveResult.promotion) {
+            playSoundEffect('promotion');
           } else {
-            playSound('move');
+            playSoundEffect('move');
           }
+          
+          // Announce the move with speech
+          announceMoveWithSpeech(moveResult);
           
           // Animate the piece movement
           if (movingPiece) {
@@ -408,6 +441,13 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
           setLastMove(move);
           setMoveHistory(prevHistory => [...prevHistory, moveResult.san]);
           
+          // Check for check, checkmate, or draw after a short delay
+          setTimeout(() => {
+            if (gameCopy.isCheck() || gameCopy.isCheckmate() || gameCopy.isDraw()) {
+              announceGameState(gameCopy);
+            }
+          }, 700);
+          
           // If playing against computer, make computer move after animation completes
           if (gameMode === 'computer' && gameCopy.turn() === 'b') {
             console.log("Computer's turn next");
@@ -417,11 +457,11 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
           }
         } else {
           console.log("Move failed, no result returned");
-          playSound('illegal');
+          playSoundEffect('illegal');
         }
       } catch (e) {
         console.error("Invalid move:", e);
-        playSound('illegal');
+        playSoundEffect('illegal');
       }
       
       // Reset selection
@@ -445,7 +485,7 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
         console.log("No suitable piece to select");
         if (piece) {
           // If a piece was clicked but it's not the current player's, play illegal sound
-          playSound('illegal');
+          playSoundEffect('illegal');
         }
       }
     }
@@ -600,11 +640,11 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
         animatePieceMovement(selectedMove.from, selectedMove.to, movedPiece);
         
         if (selectedMove.captured) {
-          playSound('capture');
+          playSoundEffect('capture');
         } else if (selectedMove.san && selectedMove.san.includes('O-O')) {
-          playSound('castle');
+          playSoundEffect('castle');
         } else {
-          playSound('move');
+          playSoundEffect('move');
         }
         
         // Update game state after animation completes
@@ -673,6 +713,16 @@ const Chess: React.FC<ChessProps> = ({ className }) => {
                   className="p-2"
                 >
                   {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={toggleSpeech}
+                  className="mr-2"
+                  title={soundSettings.speech ? "Turn off move announcements" : "Turn on move announcements"}
+                >
+                  {soundSettings.speech ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
                 </Button>
                 
                 <Select
