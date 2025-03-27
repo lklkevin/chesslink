@@ -89,9 +89,10 @@ async def handle_client(websocket):
             })
             return
             
-        game_id = list(pgn_files.keys())[0]
+        # Default to the game specified by --game parameter if provided
+        game_id = args.game if args.game in pgn_files else list(pgn_files.keys())[0]
         
-        # Try to get game from request path if available
+        # Try to get game from request path if available (overrides the --game parameter)
         if hasattr(websocket, 'path'):
             # Parse query parameters to get the game ID
             from urllib.parse import parse_qs, urlparse
@@ -248,6 +249,7 @@ def parse_args():
     parser.add_argument("--loop", action="store_true", help="Continuously loop through positions")
     parser.add_argument("--pgn-dir", default="hardware/sim/pgn", help="Directory containing PGN files")
     parser.add_argument("--list", action="store_true", help="List available PGN files and exit")
+    parser.add_argument("--game", default=None, help="Specific game to play from the PGN directory")
     return parser.parse_args()
 
 async def main():
@@ -272,6 +274,13 @@ async def main():
             game_info = load_pgn(file_path)
             print(f"  - {game_id}: {game_info['headers'].get('Event', 'Unknown')} ({game_info['headers'].get('White', 'Unknown')} vs {game_info['headers'].get('Black', 'Unknown')})")
         return
+    
+    # Set the default game if specified
+    if args.game is not None and args.game in pgn_files:
+        logger.info(f"Using specified game: {args.game}")
+    elif args.game is not None and args.game not in pgn_files:
+        logger.warning(f"Specified game '{args.game}' not found. Available games: {', '.join(pgn_files.keys())}")
+        logger.info(f"Using first available game instead")
     
     # Start the WebSocket server
     try:
