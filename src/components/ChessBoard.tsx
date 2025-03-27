@@ -60,22 +60,137 @@ const ChessBoard: React.FC = () => {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [demoRunning, setDemoRunning] = useState<boolean>(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [serialPort, setSerialPort] = useState<any>(null);
+  const [receivedFens, setReceivedFens] = useState<string[]>([]);
+  const [portInfo, setPortInfo] = useState<string>("");
 
-  // Simulate connecting to the ChessLink hardware
-  const connectToHardware = () => {
-    setIsConnected(false);
-    toast.info("Connecting to ChessLink hardware...");
-    
-    setTimeout(() => {
+  // Setup Web Serial API connection
+  const connectToHardware = async () => {
+    try {
+      setIsConnected(false);
+      toast.info("Connecting to ChessLink hardware...");
+      
+      // Check if Web Serial API is supported
+      if (!('serial' in navigator)) {
+        toast.error("Web Serial API not supported in this browser!");
+        return;
+      }
+      
+      // Request a serial port with explicit filters to force selection dialog
+      const port = await (navigator as any).serial.requestPort({
+        // Adding filters forces the selection dialog to appear
+        filters: [
+          // Empty filter will match any port
+          {}
+        ]
+      });
+      
+      // Try to get port information if available
+      let portInfoText = "Connected port: ";
+      try {
+        const portInfo = (port as any).getInfo ? await (port as any).getInfo() : {};
+        portInfoText += JSON.stringify(portInfo);
+        setPortInfo(portInfoText);
+      } catch (e) {
+        portInfoText += "Unknown";
+        setPortInfo(portInfoText);
+      }
+      
+      console.log("Selected port info:", port);
+      toast.info(`Port selected. ${portInfoText}`);
+      
+      await port.open({ baudRate: 115200 });
+      setSerialPort(port);
+      
+      // Setup reader for incoming data
+      const reader = port.readable.getReader();
+      let receivedData = "";
+      
+      // Read data in a loop
+      const readLoop = async () => {
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            
+            // Convert the received bytes to a string
+            const textDecoder = new TextDecoder();
+            const chunk = textDecoder.decode(value);
+            receivedData += chunk;
+            
+            // Check for complete FEN strings (separated by newlines)
+            if (receivedData.includes('\n')) {
+              const lines = receivedData.split('\n');
+              // Keep the last incomplete line (if any)
+              receivedData = lines.pop() || "";
+              
+              // Process complete lines
+              for (const line of lines) {
+                if (line.trim()) {
+                  console.log("Received FEN:", line.trim());
+                  processFenString(line.trim());
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error reading from serial port:", error);
+          toast.error("Connection error. Disconnecting...");
+          disconnectHardware();
+        } finally {
+          reader.releaseLock();
+        }
+      };
+      
+      // Start reading from the serial port
+      readLoop();
+      
       setIsConnected(true);
       toast.success("ChessLink hardware connected!");
       
-      // Start the demo after connected
-      setTimeout(() => {
-        setDemoRunning(true);
-      }, 1000);
-    }, 1500);
+    } catch (error) {
+      console.error("Error connecting to serial port:", error);
+      toast.error("Failed to connect to ChessLink hardware!");
+      setIsConnected(false);
+    }
   };
+  
+  // Disconnect from serial port
+  const disconnectHardware = async () => {
+    if (serialPort) {
+      try {
+        await serialPort.close();
+        toast.info("Disconnected from ChessLink hardware");
+      } catch (error) {
+        console.error("Error closing serial port:", error);
+      }
+      setSerialPort(null);
+    }
+    setIsConnected(false);
+  };
+  
+  // Process incoming FEN string
+  const processFenString = (fen: string) => {
+    // Add to received FENs list
+    setReceivedFens(prev => [...prev, fen]);
+    
+    // Update the board with the new FEN
+    setBoard(fenToBoard(fen.split(' ')[0]));
+    
+    // Update move information (simplified for demo)
+    setMoveIndex(prev => prev + 1);
+    setComment(`Move received from hardware`);
+    
+    // Notify user
+    toast.info(`Board position updated from hardware`);
+  };
+
+  // Cleanup serial connection on unmount
+  useEffect(() => {
+    return () => {
+      disconnectHardware();
+    };
+  }, []);
 
   // Reset the board to initial position
   const resetBoard = () => {
@@ -237,15 +352,23 @@ const ChessBoard: React.FC = () => {
                   >
                     <RotateCw size={20} />
                   </button>
-                  <button 
-                    onClick={connectToHardware}
-                    className={`p-2 rounded-full transition-colors ${isConnected 
-                      ? 'bg-green-100 text-green-700' 
-                      : 'bg-accent text-white hover:bg-accent-dark'}`}
-                    title={isConnected ? "Connected" : "Connect to hardware"}
-                  >
-                    <Zap size={20} />
-                  </button>
+                  {isConnected ? (
+                    <button 
+                      onClick={disconnectHardware}
+                      className="p-2 rounded-full bg-red-100 hover:bg-red-200 transition-colors text-red-700"
+                      title="Disconnect hardware"
+                    >
+                      <X size={20} />
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={connectToHardware}
+                      className="p-2 rounded-full bg-accent text-white hover:bg-accent-dark transition-colors"
+                      title="Connect to hardware"
+                    >
+                      <Zap size={20} />
+                    </button>
+                  )}
                   <button 
                     onClick={toggleExpand}
                     className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700"
@@ -259,7 +382,10 @@ const ChessBoard: React.FC = () => {
                   {isConnected && (
                     <>
                       <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                      Hardware connected
+                      <span>
+                        Hardware connected
+                        {portInfo && <span className="ml-1 text-xs opacity-70">{portInfo}</span>}  
+                      </span>
                     </>
                   )}
                 </div>
@@ -402,15 +528,23 @@ const ChessBoard: React.FC = () => {
                     >
                       <RotateCw size={16} />
                     </button>
-                    <button 
-                      onClick={connectToHardware}
-                      className={`p-2 rounded-full transition-colors ${isConnected 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-accent text-white hover:bg-accent-dark'}`}
-                      title={isConnected ? "Connected" : "Connect to hardware"}
-                    >
-                      <Zap size={16} />
-                    </button>
+                    {isConnected ? (
+                      <button 
+                        onClick={disconnectHardware}
+                        className="p-2 rounded-full bg-red-100 hover:bg-red-200 transition-colors text-red-700"
+                        title="Disconnect hardware"
+                      >
+                        <X size={16} />
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={connectToHardware}
+                        className="p-2 rounded-full bg-accent text-white hover:bg-accent-dark transition-colors"
+                        title="Connect to hardware"
+                      >
+                        <Zap size={16} />
+                      </button>
+                    )}
                     <button 
                       onClick={toggleExpand}
                       className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700"
@@ -424,7 +558,10 @@ const ChessBoard: React.FC = () => {
                     {isConnected && (
                       <>
                         <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                        Hardware connected
+                        <span>
+                          Hardware connected
+                          {portInfo && <span className="block text-xs opacity-70 truncate max-w-32">{portInfo}</span>}
+                        </span>
                       </>
                     )}
                   </div>
