@@ -59,3 +59,42 @@ Edit `emulator.py` to:
 - Change the default serial port and baud rate
 - Modify the delay between moves
 - Add different games or positions
+
+## PGN Serial Emulator
+
+The `pgn_serial_emulator.py` script allows you to send chess positions from PGN files as FEN strings over a serial connection. This is useful for testing the ChessLink hardware or software without using the real hardware.
+
+### Usage
+
+```bash
+# List available PGN files
+./start_pgn_serial.sh --list-games
+
+# Run in simulation mode with a specific game (default)
+./start_pgn_serial.sh --game immortal
+
+# Connect to a hardware device
+./start_pgn_serial.sh --port /dev/cu.usbserial-1410 --game kasparov_topalov
+
+# List available serial ports
+./start_pgn_serial.sh --list-ports
+
+# Enable verbose mode
+./start_pgn_serial.sh --verbose
+
+# Loop through the game positions
+./start_pgn_serial.sh --loop
+```
+
+### Options
+
+- `--port`: Serial port to connect to
+- `--baud`: Baud rate (default: 115200)
+- `--delay`: Delay in seconds between positions (default: 2)
+- `--list-ports`: List available serial ports and select interactively
+- `--verbose`: Enable verbose output
+- `--simulate`: Run in simulation mode without connecting to a port (default if no port specified)
+- `--pgn-dir`: Directory containing PGN files (default: hardware/sim/pgn)
+- `--list-games`: List available PGN files and exit
+- `--game`: Specific game to play from the PGN directory
+- `--loop`: Continuously loop through the game positions
