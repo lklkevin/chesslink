@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -66,6 +66,16 @@ const GAME_POSITIONS = {
   ]
 };
 
+// Define the Game interface for PGN games
+interface Game {
+  id: string;
+  name: string;
+  white: string;
+  black: string;
+  result: string;
+  moves_count: number;
+}
+
 const Demo: React.FC = () => {
   const [currentFen, setCurrentFen] = useState(DEMO_POSITIONS[0]);
   const [moveIndex, setMoveIndex] = useState(0);
@@ -86,6 +96,13 @@ const Demo: React.FC = () => {
   const [connectionType, setConnectionType] = useState<'none' | 'websocket' | 'hardware' | 'simulation'>('none');
   const [connectionAttemptCount, setConnectionAttemptCount] = useState(0);
   const [serverStatus, setServerStatus] = useState<'unknown' | 'online' | 'offline'>('unknown');
+  const [availableGames, setAvailableGames] = useState<Game[]>([]);
+  const [currentGameInfo, setCurrentGameInfo] = useState<Record<string, string>>({});
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [serverAvailable, setServerAvailable] = useState(true);
+  const [whiteActive, setWhiteActive] = useState(false);
+  const [blackActive, setBlackActive] = useState(false);
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false);
 
   // Add game options
   const gameOptions = [
@@ -134,6 +151,113 @@ const Demo: React.FC = () => {
   // Add log entry to data flow
   const addLogEntry = (entry: string) => {
     setDataFlow(prev => [entry, ...prev].slice(0, 10));
+  };
+  
+  // Add raw data entry function for processing FEN strings
+  const addRawDataEntry = (data: string) => {
+    addLogEntry(`Received FEN: ${data}`);
+    // Process the FEN string
+    processReceivedFen(data);
+  };
+  
+  // Process received FEN string from serial port or WebSocket
+  const processReceivedFen = (fen: string) => {
+    if (!fen || typeof fen !== 'string' || !fen.includes('/')) {
+      console.error("Invalid FEN string received:", fen);
+      addLogEntry(`ERROR: Invalid FEN format: ${fen}`);
+      return;
+    }
+    
+    try {
+      // Update the board state with the new FEN
+      setCurrentFen(fen);
+      
+      // Check for which player's turn it is based on the FEN
+      const playerTurn = fen.split(' ')[1]; // 'w' or 'b'
+      const turnText = playerTurn === 'w' ? "White's turn" : "Black's turn";
+      addLogEntry(turnText);
+      
+      // Set the LED indicators based on whose turn it is
+      if (playerTurn === 'w') {
+        setWhiteActive(true);
+        setBlackActive(false);
+      } else {
+        setWhiteActive(false);
+        setBlackActive(true);
+      }
+      
+      console.log("Processed FEN:", fen);
+    } catch (error) {
+      console.error("Error processing FEN:", error);
+      addLogEntry(`ERROR: Could not process FEN: ${error.message}`);
+    }
+  };
+  
+  // Clean up serial port on unmount
+  useEffect(() => {
+    return () => {
+      if (serialPort) {
+        try {
+          const closeResult = serialPort.close();
+          // Only call .catch() if closeResult is a Promise
+          if (closeResult && typeof closeResult.catch === 'function') {
+            closeResult.catch(console.error);
+          }
+        } catch (error) {
+          console.error("Error closing serial port:", error);
+        }
+      }
+    };
+  }, [serialPort]);
+  
+  // Toggle connection state for both hardware and WebSocket
+  const toggleConnection = () => {
+    if (isConnected) {
+      if (serialPort) {
+        try {
+          // If using serial port, call close but don't immediately set to null
+          const closeResult = serialPort.close();
+          // Only process as Promise if it is one
+          if (closeResult && typeof closeResult.then === 'function') {
+            closeResult.then(() => {
+              setSerialPort(null);
+            }).catch(error => {
+              console.error("Error closing serial port:", error);
+              setSerialPort(null);
+            });
+          } else {
+            // If not a Promise, set to null immediately
+            setSerialPort(null);
+          }
+        } catch (error) {
+          console.error("Error closing serial port:", error);
+          setSerialPort(null);
+        }
+      }
+      
+      if (webSocket) {
+        // If using WebSocket
+        try {
+          webSocket.close();
+        } catch (error) {
+          console.error("Error closing WebSocket:", error);
+        }
+        setWebSocket(null);
+      }
+      
+      setIsConnected(false);
+      setConnectionType(null);
+      setStatusMessage("Not connected");
+      setPortInfo("");
+      addLogEntry("Disconnected from device");
+      
+      // Reset LED indicators
+      setWhiteActive(false);
+      setBlackActive(false);
+    } else {
+      // Connect using the WebSocket method
+      connectWebSocket();
+    }
   };
 
   // Simulate a move
@@ -300,102 +424,6 @@ const Demo: React.FC = () => {
     setConnectionType('none');
     setPortInfo("");
   };
-  
-  // Process received FEN string from serial port or WebSocket
-  const processReceivedFen = (fen: string) => {
-    if (!fen || typeof fen !== 'string' || !fen.includes('/')) {
-      console.error("Invalid FEN string received:", fen);
-      addLogEntry(`ERROR: Invalid FEN format: ${fen}`);
-      return;
-    }
-    
-    try {
-      // Update the board state with the new FEN
-      setCurrentFen(fen);
-      
-      // Check for which player's turn it is based on the FEN
-      const playerTurn = fen.split(' ')[1]; // 'w' or 'b'
-      const turnText = playerTurn === 'w' ? "White's turn" : "Black's turn";
-      addLogEntry(turnText);
-      
-      // Set the LED indicators based on whose turn it is
-      const leds = playerTurn === 'w' 
-        ? { whitePlayer: true, blackPlayer: false }
-        : { whitePlayer: false, blackPlayer: true };
-      setLeds(leds);
-      
-      console.log("Processed FEN:", fen);
-    } catch (error) {
-      console.error("Error processing FEN:", error);
-      addLogEntry(`ERROR: Could not process FEN: ${error}`);
-    }
-  };
-
-  // Clean up serial port on unmount
-  useEffect(() => {
-    return () => {
-      if (serialPort) {
-        try {
-          const closeResult = serialPort.close();
-          // Only call .catch() if closeResult is a Promise
-          if (closeResult && typeof closeResult.catch === 'function') {
-            closeResult.catch(console.error);
-          }
-        } catch (error) {
-          console.error("Error closing serial port:", error);
-        }
-      }
-    };
-  }, [serialPort]);
-
-  // Toggle connection state for both hardware and WebSocket
-  const toggleConnection = () => {
-    if (isConnected) {
-      if (serialPort) {
-        try {
-          // If using serial port, call close but don't immediately set to null
-          const closeResult = serialPort.close();
-          // Only process as Promise if it is one
-          if (closeResult && typeof closeResult.then === 'function') {
-            closeResult.then(() => {
-              setSerialPort(null);
-            }).catch(error => {
-              console.error("Error closing serial port:", error);
-              setSerialPort(null);
-            });
-          } else {
-            // If not a Promise, set to null immediately
-            setSerialPort(null);
-          }
-        } catch (error) {
-          console.error("Error closing serial port:", error);
-          setSerialPort(null);
-        }
-      }
-      
-      if (webSocket) {
-        // If using WebSocket
-        try {
-          webSocket.close();
-        } catch (error) {
-          console.error("Error closing WebSocket:", error);
-        }
-        setWebSocket(null);
-      }
-      
-      setIsConnected(false);
-      setConnectionType('none');
-      setStatusMessage("Not connected");
-      setPortInfo("");
-      addLogEntry("Disconnected from device");
-      
-      // Reset LED indicators
-      setLeds({ whitePlayer: false, blackPlayer: false });
-    } else {
-      // Prefer hardware connection if available
-      connectToHardware();
-    }
-  };
 
   // Reset demo
   const resetDemo = () => {
@@ -470,170 +498,102 @@ const Demo: React.FC = () => {
     }
   }, [isConnected, isSimulating]);
 
-  // Update WebSocket connection function to better handle disconnections
-  const connectWebSocket = async () => {
-    if (isConnected) return;
-    
-    // Disable buttons during connection attempt
-    setIsSimulating(true);
-    setConnectionAttemptCount(prev => prev + 1);
-    addLogEntry(`Checking WebSocket server availability for ${selectedGame}...`);
-    
-    // First check if the server is actually running
-    const serverAvailable = await checkWebSocketAvailability();
-    
-    if (!serverAvailable) {
-      setIsSimulating(false);
-      addLogEntry("❌ WebSocket server is not running. Please start the server first.");
-      toast.error("WebSocket server not available. Run: python hardware/sim/websocket_emulator.py --loop");
-      
-      // Show a copy button for the command
-      toast.info(
-        <div>
-          <div>Copy the command to start the server:</div>
-          <code className="text-xs bg-black text-white p-1 rounded mt-1 block">
-            python hardware/sim/websocket_emulator.py --loop
-          </code>
-        </div>,
-        { duration: 8000 }
-      );
-      return;
+  // Update connectWebSocket to handle PGN-based WebSocket server
+  const connectWebSocket = useCallback(async () => {
+    if (webSocket) {
+      webSocket.close();
     }
-    
-    addLogEntry(`✅ WebSocket server available! Connecting for game: ${selectedGame}...`);
+
+    setIsConnecting(true);
+    setIsCheckingConnection(true);
     
     try {
-      // Generate a unique connection attempt ID to prevent stale handlers
-      const currentAttemptId = connectionAttemptCount;
+      // Add the selected game to the URL
+      const ws = new WebSocket(`ws://localhost:8765?game=${selectedGame}`);
       
-      // Connect to the WebSocket server with selected game
-      const ws = new WebSocket(getWebSocketUrl());
-      
-      // Add a connection timeout
-      const connectionTimeout = setTimeout(() => {
-        if (ws.readyState !== WebSocket.OPEN) {
-          addLogEntry(`Connection timeout for ${selectedGame}`);
-          try {
-            ws.close();
-          } catch (e) {
-            // Ignore errors on close
-          }
-          setIsSimulating(false);
-          toast.error("Failed to connect to WebSocket server");
+      let connectionTimeout = setTimeout(() => {
+        if (ws && ws.readyState !== WebSocket.OPEN) {
+          setIsConnecting(false);
+          setServerAvailable(false);
+          addLogEntry("❌ WebSocket connection timed out");
+          toast.error("WebSocket server connection timed out. Is the server running?");
         }
       }, 5000);
       
       ws.onopen = () => {
-        // Check if this is the most recent connection attempt
-        if (currentAttemptId !== connectionAttemptCount) {
-          try {
-            ws.close();
-          } catch (e) {
-            // Ignore errors on close
-          }
-          return;
-        }
-        
         clearTimeout(connectionTimeout);
-        setIsSimulating(false);
-        addLogEntry(`✅ WebSocket connection established for ${selectedGame}!`);
-        setWebSocket(ws);
+        setServerAvailable(true);
         setIsConnected(true);
-        setConnectionType('websocket');
-        setStatusMessage(`Connected via WebSocket: ${selectedGame}`);
+        setIsConnecting(false);
+        setConnectionType("websocket");
+        setIsCheckingConnection(false);
+        addLogEntry("✅ WebSocket connected");
+        toast.success("Connected to WebSocket server");
         
-        // Update game info display
-        setPortInfo(`WebSocket: ${gameOptions.find(game => game.value === selectedGame)?.label || selectedGame}`);
-        
-        // Show success toast
-        toast.success(`Connected to WebSocket server with ${selectedGame} game`);
+        // Store the WebSocket instance
+        setWebSocket(ws);
       };
       
       ws.onmessage = (event) => {
-        // Check if this is the most recent connection attempt
-        if (currentAttemptId !== connectionAttemptCount) return;
-        
         try {
-          // Parse the incoming message as JSON
           const data = JSON.parse(event.data);
           
-          // Handle different message types
           if (data.type === "info") {
-            // Process info messages
-            addLogEntry(`Info: ${data.message}`);
-            if (data.total_positions) {
-              addLogEntry(`Total positions in game: ${data.total_positions}`);
+            addLogEntry(`ℹ️ ${data.message}`);
+            
+            // Store available games if provided
+            if (data.available_games) {
+              setAvailableGames(data.available_games);
             }
-          } 
-          else if (data.type === "position") {
-            // Process position messages
-            const fen = data.fen;
-            addLogEntry(`Received position ${data.move + 1}: ${fen}`);
             
-            // Check for which player's turn it is based on the FEN
-            const playerTurn = fen.split(' ')[1]; // 'w' or 'b'
-            const turnText = playerTurn === 'w' ? "White's turn" : "Black's turn";
-            addLogEntry(turnText);
-            
-            // Set the LED indicators based on whose turn it is
-            const leds = playerTurn === 'w' 
-              ? { whitePlayer: true, blackPlayer: false }
-              : { whitePlayer: false, blackPlayer: true };
-            setLeds(leds);
-            
-            // Update the board with the new position
-            setCurrentFen(fen);
+            // Store current game headers if provided
+            if (data.headers) {
+              setCurrentGameInfo(data.headers);
+            }
+          } else if (data.type === "position") {
+            addRawDataEntry(data.fen);
+          } else if (data.type === "error") {
+            addLogEntry(`❌ Error: ${data.message}`);
+            toast.error(data.message);
           }
         } catch (error) {
-          // Fallback if JSON parsing fails
-          addLogEntry(`Received raw data: ${event.data}`);
-          
-          // Try to detect if it's a FEN string directly
-          const data = event.data;
-          if (typeof data === 'string' && data.includes('/')) {
-            setCurrentFen(data);
-            addLogEntry("Parsed as FEN string");
-          }
+          console.error("Error parsing WebSocket message:", error);
+          addLogEntry(`❌ Error parsing message: ${error.message}`);
         }
       };
       
       ws.onerror = (error) => {
-        // Check if this is the most recent connection attempt
-        if (currentAttemptId !== connectionAttemptCount) return;
-        
-        addLogEntry(`WebSocket error for ${selectedGame}: ${error.type}`);
         clearTimeout(connectionTimeout);
-        setIsSimulating(false);
-        
-        if (!isConnected) {
-          toast.error("Error connecting to WebSocket server");
-        }
+        setServerAvailable(false);
+        setIsConnecting(false);
+        setIsCheckingConnection(false);
+        console.error("WebSocket error:", error);
+        addLogEntry(`❌ WebSocket error`);
+        toast.error("WebSocket connection error. Please check if the server is running.");
       };
       
       ws.onclose = (event) => {
-        // Check if this is the most recent connection attempt
-        if (currentAttemptId !== connectionAttemptCount) return;
-        
-        const closeReason = event.reason ? ` (${event.reason})` : '';
-        addLogEntry(`WebSocket connection for ${selectedGame} closed (code: ${event.code}${closeReason})`);
-        
-        // Only show disconnect toast if we were previously connected
-        if (isConnected && connectionType === 'websocket') {
-          toast.info(`WebSocket disconnected: ${event.code === 1000 ? 'Normal closure' : 'Connection lost'}`);
-        }
-        
+        clearTimeout(connectionTimeout);
         setIsConnected(false);
-        setConnectionType('none');
-        setStatusMessage("Not connected");
-        setWebSocket(null);
-        setIsSimulating(false);
+        setIsConnecting(false);
+        setIsCheckingConnection(false);
+        addLogEntry(`WebSocket connection closed (code: ${event.code})`);
+        
+        // Only show toast if it was previously connected
+        if (connectionType === "websocket") {
+          toast.info("WebSocket connection closed");
+          setConnectionType(null);
+        }
       };
     } catch (error) {
-      addLogEntry(`Failed to connect to ${selectedGame}: ${error}`);
-      setIsSimulating(false);
-      toast.error("Error connecting to WebSocket server");
+      setIsConnecting(false);
+      setIsCheckingConnection(false);
+      setServerAvailable(false);
+      console.error("WebSocket connection error:", error);
+      addLogEntry(`❌ Failed to connect to WebSocket: ${error.message}`);
+      toast.error(`Failed to connect: ${error.message}`);
     }
-  };
+  }, [addLogEntry, connectionType, selectedGame]);
 
   // Update the simulateFallbackConnection to set the connection type
   const simulateFallbackConnection = (autoStart = false) => {
@@ -895,9 +855,20 @@ const Demo: React.FC = () => {
                       onChange={(e) => setSelectedGame(e.target.value)}
                       disabled={isConnected}
                     >
-                      {gameOptions.map(game => (
-                        <option key={game.value} value={game.value}>{game.label}</option>
-                      ))}
+                      {availableGames.length > 0 ? (
+                        availableGames.map((game) => (
+                          <option key={game.id} value={game.id}>
+                            {game.name} ({game.white} vs {game.black})
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="immortal">Anderssen's Immortal Game</option>
+                          <option value="brilliancy">Kasparov vs Topalov (1999)</option>
+                          <option value="opera">Morphy's Opera Game</option>
+                          <option value="scholars_mate">Scholar's Mate</option>
+                        </>
+                      )}
                     </select>
                     
                     <div className="flex flex-wrap justify-center gap-3">
@@ -912,10 +883,10 @@ const Demo: React.FC = () => {
                       <Button 
                         variant={connectionType === 'websocket' ? "default" : "outline"}
                         onClick={connectWebSocket}
-                        disabled={isConnected || isSimulating || serverStatus === 'offline'}
+                        disabled={isConnected || isSimulating || !serverAvailable}
                         className={`${connectionType === 'websocket' ? "bg-blue-600 hover:bg-blue-700" : ""} relative`}
                       >
-                        {isSimulating ? "Checking..." : "Connect WebSocket"}
+                        {isConnecting ? "Connecting..." : isConnected && connectionType === 'websocket' ? "Connected to WebSocket" : "Connect WebSocket"}
                         <span className={`absolute top-0 right-0 -mt-1 -mr-1 w-2 h-2 rounded-full ${
                           serverStatus === 'online' ? 'bg-green-500' : 
                           serverStatus === 'offline' ? 'bg-red-500' : 'bg-gray-300'
