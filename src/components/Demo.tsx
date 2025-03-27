@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from 'sonner';
 
 // Mock FEN positions for demo
 const DEMO_POSITIONS = [
@@ -29,6 +30,42 @@ const PIECE_IMAGES: Record<string, string> = {
   'K': 'https://www.chess.com/chess-themes/pieces/neo/150/wk.png',
 };
 
+// Create game-specific position data matching the options from the server
+const GAME_POSITIONS = {
+  "immortal": [
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  // Starting position
+    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",  // 1. e4
+    "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2",  // 1... d5
+    "rnbqkbnr/ppp1pppp/8/3p4/3PP3/8/PPP2PPP/RNBQKBNR b KQkq d3 0 2",  // 2. d4
+    "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3",  // 2... e6
+    "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/2N5/PPP2PPP/R1BQKBNR b KQkq - 1 3",  // 3. Nc3
+  ],
+  "brilliancy": [
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  // Starting position
+    "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1",  // 1. d4
+    "rnbqkb1r/pppppppp/5n2/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 1 2",  // 1... Nf6
+    "rnbqkb1r/pppppppp/5n2/8/3P4/5N2/PPP1PPPP/RNBQKB1R b KQkq - 2 2",  // 2. Nf3
+    "rnbqkb1r/pppp1ppp/5n2/4p3/3P4/5N2/PPP1PPPP/RNBQKB1R w KQkq e6 0 3",  // 2... e5
+    "rnbqkb1r/pppp1ppp/5n2/4P3/8/5N2/PPP1PPPP/RNBQKB1R b KQkq - 0 3",  // 3. dxe5
+  ],
+  "opera": [
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  // Starting position
+    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",  // 1. e4
+    "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2",  // 1... e5
+    "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2",  // 2. Nf3
+    "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",  // 2... Nc6
+    "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",  // 3. Bc4
+  ],
+  "miniatures": [
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  // Starting position
+    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",  // 1. e4
+    "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2",  // 1... e5
+    "rnbqkbnr/pppp1ppp/8/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR b KQkq - 1 2",  // 2. Bc4
+    "rnbqkbnr/ppp2ppp/8/3pp3/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq d6 0 3",  // 2... d5
+    "rnbqkbnr/ppp2ppp/8/3Pp3/2B5/8/PPPP1PPP/RNBQK1NR b KQkq - 0 3",  // 3. exd5
+  ]
+};
+
 const Demo: React.FC = () => {
   const [currentFen, setCurrentFen] = useState(DEMO_POSITIONS[0]);
   const [moveIndex, setMoveIndex] = useState(0);
@@ -39,6 +76,24 @@ const Demo: React.FC = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [pieceTheme, setPieceTheme] = useState<'neo' | 'cburnett' | 'classic'>('neo');
+  const [serialPort, setSerialPort] = useState<any>(null);
+  const [portInfo, setPortInfo] = useState<string>("");
+  const [selectedGame, setSelectedGame] = useState<string>("immortal");
+  const [statusMessage, setStatusMessage] = useState<string>("Not connected");
+  const [leds, setLeds] = useState({ whitePlayer: false, blackPlayer: false });
+  const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
+  const [explicitSimulationRequested, setExplicitSimulationRequested] = useState(false);
+  const [connectionType, setConnectionType] = useState<'none' | 'websocket' | 'hardware' | 'simulation'>('none');
+  const [connectionAttemptCount, setConnectionAttemptCount] = useState(0);
+  const [serverStatus, setServerStatus] = useState<'unknown' | 'online' | 'offline'>('unknown');
+
+  // Add game options
+  const gameOptions = [
+    { value: "immortal", label: "Anderssen's Immortal Game (1851)" },
+    { value: "brilliancy", label: "Kasparov vs Topalov (1999)" },
+    { value: "opera", label: "Morphy's Opera Game (1858)" },
+    { value: "miniatures", label: "Scholar's Mate Miniature" },
+  ];
 
   // Parse FEN string to board state
   useEffect(() => {
@@ -129,10 +184,217 @@ const Demo: React.FC = () => {
     }, 500);
   };
 
-  // Toggle connection status
+  // Connect to hardware using Web Serial API
+  const connectToHardware = async () => {
+    try {
+      if (!isConnected) {
+        // Check if Web Serial API is supported
+        if (!('serial' in navigator)) {
+          toast.error("Web Serial API not supported in this browser!");
+          addLogEntry("ERROR: Web Serial API not supported");
+          return;
+        }
+        
+        addLogEntry("Requesting serial port access...");
+        
+        // Request a serial port with explicit filters to force selection dialog
+        const port = await (navigator as any).serial.requestPort();
+        // No filters needed - this will show all available ports
+        
+        // Try to get port information if available
+        let portInfoText = "Port: ";
+        try {
+          const portInfo = (port as any).getInfo ? await (port as any).getInfo() : {};
+          portInfoText += JSON.stringify(portInfo);
+          setPortInfo(portInfoText);
+        } catch (e) {
+          portInfoText += "Unknown";
+          setPortInfo(portInfoText);
+        }
+        
+        addLogEntry(`Selected ${portInfoText}`);
+        
+        // Open the port
+        await port.open({ baudRate: 115200 });
+        setSerialPort(port);
+        
+        // Setup reader for incoming data
+        const reader = port.readable.getReader();
+        let receivedData = "";
+        
+        // Read data in a loop
+        const readLoop = async () => {
+          try {
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              
+              // Convert the received bytes to a string
+              const textDecoder = new TextDecoder();
+              const chunk = textDecoder.decode(value);
+              console.log("RAW DATA RECEIVED:", chunk, "Bytes:", value);
+              addLogEntry(`RAW DATA: ${chunk}`);
+              receivedData += chunk;
+              
+              // Check for complete FEN strings (separated by newlines)
+              if (receivedData.includes('\n')) {
+                const lines = receivedData.split('\n');
+                // Keep the last incomplete line (if any)
+                receivedData = lines.pop() || "";
+                
+                // Process complete lines
+                for (const line of lines) {
+                  if (line.trim()) {
+                    console.log("COMPLETE FEN:", line.trim());
+                    addLogEntry(`PARSED: ${line.trim()}`);
+                    processReceivedFen(line.trim());
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Error reading from serial port:", error);
+            addLogEntry(`ERROR: ${error.toString()}`);
+            disconnectHardware();
+          } finally {
+            reader.releaseLock();
+          }
+        };
+        
+        // Start reading from the serial port
+        readLoop();
+        
+        setIsConnected(true);
+        setConnectionType('hardware');
+        setStatusMessage("Connected to hardware");
+        addLogEntry("Connected to ChessLink hardware");
+        toast.success("Connected to ChessLink hardware!");
+      } else {
+        await disconnectHardware();
+      }
+    } catch (error) {
+      console.error("Error connecting to serial port:", error);
+      addLogEntry("ERROR: Failed to connect");
+      toast.error("Failed to connect to ChessLink hardware!");
+    }
+  };
+  
+  // Disconnect from serial port
+  const disconnectHardware = async () => {
+    if (serialPort) {
+      try {
+        // Handle both Promise-based and synchronous close methods
+        const closeResult = serialPort.close();
+        if (closeResult && typeof closeResult.then === 'function') {
+          await closeResult;
+        }
+        addLogEntry("Disconnected from hardware");
+        toast.info("Disconnected from ChessLink hardware");
+      } catch (error) {
+        console.error("Error closing serial port:", error);
+        addLogEntry("ERROR: Problem disconnecting");
+      }
+      setSerialPort(null);
+    }
+    setIsConnected(false);
+    setConnectionType('none');
+    setPortInfo("");
+  };
+  
+  // Process received FEN string from serial port or WebSocket
+  const processReceivedFen = (fen: string) => {
+    if (!fen || typeof fen !== 'string' || !fen.includes('/')) {
+      console.error("Invalid FEN string received:", fen);
+      addLogEntry(`ERROR: Invalid FEN format: ${fen}`);
+      return;
+    }
+    
+    try {
+      // Update the board state with the new FEN
+      setCurrentFen(fen);
+      
+      // Check for which player's turn it is based on the FEN
+      const playerTurn = fen.split(' ')[1]; // 'w' or 'b'
+      const turnText = playerTurn === 'w' ? "White's turn" : "Black's turn";
+      addLogEntry(turnText);
+      
+      // Set the LED indicators based on whose turn it is
+      const leds = playerTurn === 'w' 
+        ? { whitePlayer: true, blackPlayer: false }
+        : { whitePlayer: false, blackPlayer: true };
+      setLeds(leds);
+      
+      console.log("Processed FEN:", fen);
+    } catch (error) {
+      console.error("Error processing FEN:", error);
+      addLogEntry(`ERROR: Could not process FEN: ${error}`);
+    }
+  };
+
+  // Clean up serial port on unmount
+  useEffect(() => {
+    return () => {
+      if (serialPort) {
+        try {
+          const closeResult = serialPort.close();
+          // Only call .catch() if closeResult is a Promise
+          if (closeResult && typeof closeResult.catch === 'function') {
+            closeResult.catch(console.error);
+          }
+        } catch (error) {
+          console.error("Error closing serial port:", error);
+        }
+      }
+    };
+  }, [serialPort]);
+
+  // Toggle connection state for both hardware and WebSocket
   const toggleConnection = () => {
-    setIsConnected(!isConnected);
-    addLogEntry(isConnected ? "Disconnected from ChessLink board" : "Connected to ChessLink board");
+    if (isConnected) {
+      if (serialPort) {
+        try {
+          // If using serial port, call close but don't immediately set to null
+          const closeResult = serialPort.close();
+          // Only process as Promise if it is one
+          if (closeResult && typeof closeResult.then === 'function') {
+            closeResult.then(() => {
+              setSerialPort(null);
+            }).catch(error => {
+              console.error("Error closing serial port:", error);
+              setSerialPort(null);
+            });
+          } else {
+            // If not a Promise, set to null immediately
+            setSerialPort(null);
+          }
+        } catch (error) {
+          console.error("Error closing serial port:", error);
+          setSerialPort(null);
+        }
+      }
+      
+      if (webSocket) {
+        // If using WebSocket
+        try {
+          webSocket.close();
+        } catch (error) {
+          console.error("Error closing WebSocket:", error);
+        }
+        setWebSocket(null);
+      }
+      
+      setIsConnected(false);
+      setConnectionType('none');
+      setStatusMessage("Not connected");
+      setPortInfo("");
+      addLogEntry("Disconnected from device");
+      
+      // Reset LED indicators
+      setLeds({ whitePlayer: false, blackPlayer: false });
+    } else {
+      // Prefer hardware connection if available
+      connectToHardware();
+    }
   };
 
   // Reset demo
@@ -154,6 +416,284 @@ const Demo: React.FC = () => {
   const getRankLabel = (rank: number) => 8 - rank;
   const getFileLabel = (file: number) => String.fromCharCode(97 + file);
 
+  // Update WebSocket URL to include game selection
+  const getWebSocketUrl = () => {
+    return `ws://localhost:8765?game=${selectedGame}`;
+  };
+
+  // Update the checkWebSocketAvailability function to set server status
+  const checkWebSocketAvailability = async (): Promise<boolean> => {
+    setServerStatus('unknown');
+    return new Promise((resolve) => {
+      try {
+        // Try to connect to the WebSocket server with a short timeout
+        const ws = new WebSocket(getWebSocketUrl());
+        
+        // Set a short timeout to check if connection can be established
+        const timeout = setTimeout(() => {
+          ws.close();
+          setServerStatus('offline');
+          resolve(false);
+        }, 1000);
+        
+        ws.onopen = () => {
+          clearTimeout(timeout);
+          ws.close();
+          setServerStatus('online');
+          resolve(true);
+        };
+        
+        ws.onerror = () => {
+          clearTimeout(timeout);
+          setServerStatus('offline');
+          resolve(false);
+        };
+      } catch (error) {
+        setServerStatus('offline');
+        resolve(false);
+      }
+    });
+  };
+
+  // Add a function to check server status periodically when not connected
+  useEffect(() => {
+    // Only check server status when not connected
+    if (!isConnected && !isSimulating) {
+      const checkInterval = setInterval(() => {
+        checkWebSocketAvailability();
+      }, 5000);
+      
+      // Initial check
+      checkWebSocketAvailability();
+      
+      return () => clearInterval(checkInterval);
+    }
+  }, [isConnected, isSimulating]);
+
+  // Update WebSocket connection function to better handle disconnections
+  const connectWebSocket = async () => {
+    if (isConnected) return;
+    
+    // Disable buttons during connection attempt
+    setIsSimulating(true);
+    setConnectionAttemptCount(prev => prev + 1);
+    addLogEntry(`Checking WebSocket server availability for ${selectedGame}...`);
+    
+    // First check if the server is actually running
+    const serverAvailable = await checkWebSocketAvailability();
+    
+    if (!serverAvailable) {
+      setIsSimulating(false);
+      addLogEntry("❌ WebSocket server is not running. Please start the server first.");
+      toast.error("WebSocket server not available. Run: python hardware/sim/websocket_emulator.py --loop");
+      
+      // Show a copy button for the command
+      toast.info(
+        <div>
+          <div>Copy the command to start the server:</div>
+          <code className="text-xs bg-black text-white p-1 rounded mt-1 block">
+            python hardware/sim/websocket_emulator.py --loop
+          </code>
+        </div>,
+        { duration: 8000 }
+      );
+      return;
+    }
+    
+    addLogEntry(`✅ WebSocket server available! Connecting for game: ${selectedGame}...`);
+    
+    try {
+      // Generate a unique connection attempt ID to prevent stale handlers
+      const currentAttemptId = connectionAttemptCount;
+      
+      // Connect to the WebSocket server with selected game
+      const ws = new WebSocket(getWebSocketUrl());
+      
+      // Add a connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          addLogEntry(`Connection timeout for ${selectedGame}`);
+          try {
+            ws.close();
+          } catch (e) {
+            // Ignore errors on close
+          }
+          setIsSimulating(false);
+          toast.error("Failed to connect to WebSocket server");
+        }
+      }, 5000);
+      
+      ws.onopen = () => {
+        // Check if this is the most recent connection attempt
+        if (currentAttemptId !== connectionAttemptCount) {
+          try {
+            ws.close();
+          } catch (e) {
+            // Ignore errors on close
+          }
+          return;
+        }
+        
+        clearTimeout(connectionTimeout);
+        setIsSimulating(false);
+        addLogEntry(`✅ WebSocket connection established for ${selectedGame}!`);
+        setWebSocket(ws);
+        setIsConnected(true);
+        setConnectionType('websocket');
+        setStatusMessage(`Connected via WebSocket: ${selectedGame}`);
+        
+        // Update game info display
+        setPortInfo(`WebSocket: ${gameOptions.find(game => game.value === selectedGame)?.label || selectedGame}`);
+        
+        // Show success toast
+        toast.success(`Connected to WebSocket server with ${selectedGame} game`);
+      };
+      
+      ws.onmessage = (event) => {
+        // Check if this is the most recent connection attempt
+        if (currentAttemptId !== connectionAttemptCount) return;
+        
+        try {
+          // Parse the incoming message as JSON
+          const data = JSON.parse(event.data);
+          
+          // Handle different message types
+          if (data.type === "info") {
+            // Process info messages
+            addLogEntry(`Info: ${data.message}`);
+            if (data.total_positions) {
+              addLogEntry(`Total positions in game: ${data.total_positions}`);
+            }
+          } 
+          else if (data.type === "position") {
+            // Process position messages
+            const fen = data.fen;
+            addLogEntry(`Received position ${data.move + 1}: ${fen}`);
+            
+            // Check for which player's turn it is based on the FEN
+            const playerTurn = fen.split(' ')[1]; // 'w' or 'b'
+            const turnText = playerTurn === 'w' ? "White's turn" : "Black's turn";
+            addLogEntry(turnText);
+            
+            // Set the LED indicators based on whose turn it is
+            const leds = playerTurn === 'w' 
+              ? { whitePlayer: true, blackPlayer: false }
+              : { whitePlayer: false, blackPlayer: true };
+            setLeds(leds);
+            
+            // Update the board with the new position
+            setCurrentFen(fen);
+          }
+        } catch (error) {
+          // Fallback if JSON parsing fails
+          addLogEntry(`Received raw data: ${event.data}`);
+          
+          // Try to detect if it's a FEN string directly
+          const data = event.data;
+          if (typeof data === 'string' && data.includes('/')) {
+            setCurrentFen(data);
+            addLogEntry("Parsed as FEN string");
+          }
+        }
+      };
+      
+      ws.onerror = (error) => {
+        // Check if this is the most recent connection attempt
+        if (currentAttemptId !== connectionAttemptCount) return;
+        
+        addLogEntry(`WebSocket error for ${selectedGame}: ${error.type}`);
+        clearTimeout(connectionTimeout);
+        setIsSimulating(false);
+        
+        if (!isConnected) {
+          toast.error("Error connecting to WebSocket server");
+        }
+      };
+      
+      ws.onclose = (event) => {
+        // Check if this is the most recent connection attempt
+        if (currentAttemptId !== connectionAttemptCount) return;
+        
+        const closeReason = event.reason ? ` (${event.reason})` : '';
+        addLogEntry(`WebSocket connection for ${selectedGame} closed (code: ${event.code}${closeReason})`);
+        
+        // Only show disconnect toast if we were previously connected
+        if (isConnected && connectionType === 'websocket') {
+          toast.info(`WebSocket disconnected: ${event.code === 1000 ? 'Normal closure' : 'Connection lost'}`);
+        }
+        
+        setIsConnected(false);
+        setConnectionType('none');
+        setStatusMessage("Not connected");
+        setWebSocket(null);
+        setIsSimulating(false);
+      };
+    } catch (error) {
+      addLogEntry(`Failed to connect to ${selectedGame}: ${error}`);
+      setIsSimulating(false);
+      toast.error("Error connecting to WebSocket server");
+    }
+  };
+
+  // Update the simulateFallbackConnection to set the connection type
+  const simulateFallbackConnection = (autoStart = false) => {
+    // Only allow simulation to start if explicitly requested or autoStart is true
+    if (!autoStart && !explicitSimulationRequested) {
+      console.log("Simulation prevented - not explicitly requested");
+      return;
+    }
+    
+    // If already connected, don't start the simulation
+    if (isConnected) {
+      console.log("Already connected - simulation not needed");
+      return;
+    }
+    
+    // Get the positions for the selected game
+    const positionData = GAME_POSITIONS[selectedGame] || GAME_POSITIONS.immortal;
+    
+    let index = 0;
+    setIsConnected(true);
+    setConnectionType('simulation');
+    setStatusMessage("Connected via Simulation");
+    setPortInfo(`Simulating: ${gameOptions.find(game => game.value === selectedGame)?.label || selectedGame}`);
+    addLogEntry(`Using simulation for ${selectedGame} game`);
+    toast.success(`Starting ${selectedGame} game simulation!`);
+    
+    // Process the first position
+    processReceivedFen(positionData[0]);
+    
+    // Setup interval to process remaining positions
+    const interval = setInterval(() => {
+      index = (index + 1) % positionData.length;
+      
+      addLogEntry(`SIMULATION: Position ${index + 1}/${positionData.length}`);
+      processReceivedFen(positionData[index]);
+      
+      // Set player indicators based on FEN
+      const playerTurn = positionData[index].split(' ')[1]; // 'w' or 'b'
+      setLeds({
+        whitePlayer: playerTurn === 'w',
+        blackPlayer: playerTurn === 'b'
+      });
+      
+    }, 3000);
+    
+    // Store cleanup in serialPort
+    setSerialPort({
+      close: () => {
+        clearInterval(interval);
+        setIsConnected(false);
+        setConnectionType('none');
+        setPortInfo("");
+        setStatusMessage("Not connected");
+        addLogEntry("Simulation stopped");
+        setExplicitSimulationRequested(false);
+        toast.info("Simulation stopped");
+      }
+    });
+  };
+
   return (
     <section id="demo" className="py-16 bg-gray-50">
       <div className="container mx-auto px-4">
@@ -167,8 +707,11 @@ const Demo: React.FC = () => {
                 <CardTitle className="flex items-center justify-between">
                   ChessLink Board
                   <div className="flex items-center space-x-2">
-                    <Badge variant={isConnected ? "default" : "destructive"}>
+                    <Badge variant={isConnected ? "default" : "destructive"} className={isConnected ? "bg-green-600" : ""}>
                       {isConnected ? "Connected" : "Disconnected"}
+                      {isConnected && (
+                        <span className="w-2 h-2 bg-white rounded-full ml-2 animate-pulse"></span>
+                      )}
                     </Badge>
                     <Button 
                       variant="outline" 
@@ -182,9 +725,73 @@ const Demo: React.FC = () => {
                 </CardTitle>
                 <CardDescription>
                   Interactive visualization of the smart chess board
+                  <div className="flex items-center mt-1">
+                    {isConnected && (
+                      <>
+                        <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
+                        <span className="text-xs text-green-600">{portInfo}</span>
+                      </>
+                    )}
+                  </div>
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
+                {/* Add game information display */}
+                <div className="p-4 bg-gray-100 rounded-lg mb-4">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold">
+                        {gameOptions.find(game => game.value === selectedGame)?.label || "Chess Game"}
+                      </h3>
+                      {!isConnected && (
+                        <div className="text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                          <div className={`w-2 h-2 rounded-full ${
+                            serverStatus === 'online' ? 'bg-green-500' : 
+                            serverStatus === 'offline' ? 'bg-red-500' : 'bg-gray-500'
+                          }`}></div>
+                          <span className={`${
+                            serverStatus === 'online' ? 'text-green-700' : 
+                            serverStatus === 'offline' ? 'text-red-700' : 'text-gray-500'
+                          }`}>
+                            Server {serverStatus === 'online' ? 'Online' : serverStatus === 'offline' ? 'Offline' : 'Checking...'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className={`text-sm font-medium px-3 py-1 rounded-full ${
+                      connectionType === 'websocket' ? 'bg-blue-100 text-blue-700' : 
+                      connectionType === 'hardware' ? 'bg-green-100 text-green-700' : 
+                      connectionType === 'simulation' ? 'bg-amber-100 text-amber-700' : 
+                      'text-gray-600'
+                    }`}>
+                      {statusMessage}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-2 text-sm">
+                    <div className="flex gap-2 items-center">
+                      <div className={`w-3 h-3 rounded-full ${
+                        leds.whitePlayer 
+                          ? connectionType === 'websocket' ? 'bg-blue-500 animate-pulse' :
+                            connectionType === 'simulation' ? 'bg-amber-500 animate-pulse' : 
+                            'bg-green-500 animate-pulse' 
+                          : 'bg-gray-300'
+                      }`}></div>
+                      <span className={leds.whitePlayer ? 'font-medium' : ''}>White Player{leds.whitePlayer ? ' (Active)' : ''}</span>
+                    </div>
+                    <div className="flex gap-2 items-center mt-1">
+                      <div className={`w-3 h-3 rounded-full ${
+                        leds.blackPlayer 
+                          ? connectionType === 'websocket' ? 'bg-blue-500 animate-pulse' :
+                            connectionType === 'simulation' ? 'bg-amber-500 animate-pulse' : 
+                            'bg-green-500 animate-pulse' 
+                          : 'bg-gray-300'
+                      }`}></div>
+                      <span className={leds.blackPlayer ? 'font-medium' : ''}>Black Player{leds.blackPlayer ? ' (Active)' : ''}</span>
+                    </div>
+                  </div>
+                </div>
+                
                 <div className={`relative ${isExpanded ? 'max-w-3xl mx-auto' : ''}`}>
                   {/* Files (A-H) labels at the top */}
                   <div className="grid grid-cols-8 pl-6 pr-6 mb-1">
@@ -279,28 +886,71 @@ const Demo: React.FC = () => {
                   <code className="bg-gray-100 p-1 px-2 rounded text-xs font-mono tracking-tight">{currentFen}</code>
                 </div>
                 
-                <div className="flex flex-wrap gap-3 justify-center mt-6">
-                  <Button 
-                    onClick={toggleConnection}
-                    className={`${isConnected ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-                  >
-                    {isConnected ? "Disconnect Board" : "Connect Board"}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={simulateMove}
-                    disabled={!isConnected || isSimulating}
-                    className="border-gray-300"
-                  >
-                    Simulate Move
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={resetDemo}
-                    className="border-gray-300"
-                  >
-                    Reset Demo
-                  </Button>
+                <div className="flex flex-wrap justify-center gap-3 mt-6">
+                  <div className="w-full">
+                    <label className="text-sm font-medium mb-1 block">Select Chess Game:</label>
+                    <select 
+                      className="w-full p-2 border rounded-md bg-white mb-4"
+                      value={selectedGame}
+                      onChange={(e) => setSelectedGame(e.target.value)}
+                      disabled={isConnected}
+                    >
+                      {gameOptions.map(game => (
+                        <option key={game.value} value={game.value}>{game.label}</option>
+                      ))}
+                    </select>
+                    
+                    <div className="flex flex-wrap justify-center gap-3">
+                      <Button 
+                        variant={isConnected ? "destructive" : "default"}
+                        onClick={toggleConnection}
+                        disabled={isSimulating}
+                      >
+                        {isConnected ? "Disconnect" : "Connect Hardware"}
+                      </Button>
+                      
+                      <Button 
+                        variant={connectionType === 'websocket' ? "default" : "outline"}
+                        onClick={connectWebSocket}
+                        disabled={isConnected || isSimulating || serverStatus === 'offline'}
+                        className={`${connectionType === 'websocket' ? "bg-blue-600 hover:bg-blue-700" : ""} relative`}
+                      >
+                        {isSimulating ? "Checking..." : "Connect WebSocket"}
+                        <span className={`absolute top-0 right-0 -mt-1 -mr-1 w-2 h-2 rounded-full ${
+                          serverStatus === 'online' ? 'bg-green-500' : 
+                          serverStatus === 'offline' ? 'bg-red-500' : 'bg-gray-300'
+                        }`}></span>
+                      </Button>
+                      
+                      <Button 
+                        variant={connectionType === 'simulation' ? "default" : "outline"}
+                        onClick={() => {
+                          setExplicitSimulationRequested(true);
+                          simulateFallbackConnection(true);
+                        }}
+                        disabled={isConnected || isSimulating}
+                        className={connectionType === 'simulation' ? "bg-amber-600 hover:bg-amber-700" : ""}
+                      >
+                        Simulate {selectedGame}
+                      </Button>
+                      
+                      <Button 
+                        variant="outline"
+                        onClick={simulateMove}
+                        disabled={!isConnected || isSimulating}
+                      >
+                        Manual Move
+                      </Button>
+                      
+                      <Button 
+                        variant="outline"
+                        onClick={resetDemo}
+                        disabled={isSimulating}
+                      >
+                        Reset Board
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
