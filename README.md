@@ -17,6 +17,7 @@
 7. [Usage](#usage)
 8. [Configuration](#configuration)
 9. [Contributing](#contributing)
+10. [PGN Support](#pgn-support)
 
 ---
 
@@ -222,6 +223,39 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 ## License
 
 This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+## PGN Support
+
+The ChessLink project now supports loading chess games from PGN (Portable Game Notation) files. This allows you to visualize any chess game by adding its PGN file to the system.
+
+### Adding PGN Files
+
+1. Place your PGN files in the `hardware/sim/pgn` directory
+2. Each file should have a `.pgn` extension (e.g., `famous_game.pgn`)
+3. The filename (without extension) will be used as the game identifier
+
+### Running the PGN WebSocket Server
+
+Use the provided script to start the PGN-based WebSocket server:
+
+```bash
+./hardware/sim/start_pgn_server.sh
+```
+
+Additional options:
+- `--delay 2.0` - Change the delay between positions (in seconds)
+- `--list` - List all available PGN files without starting the server
+
+### Connecting from the Demo Page
+
+1. Open the Demo page in your browser
+2. Select a game from the dropdown menu
+3. Click "Connect WebSocket"
+4. The chess board will show the selected game's positions
+
+The WebSocket server reads each PGN file, converts the moves to FEN strings, and sends them to the web application. The web app then displays the positions on the chess board, creating a visualization of the game.
 
 ---
 
