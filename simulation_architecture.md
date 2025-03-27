@@ -1,34 +1,111 @@
-# ChessLink Simulation Architecture
+# ChessLink Hardware and Simulation Architecture
 
-This document describes the architecture of the ChessLink simulation system, which allows for testing and development of the ChessLink application without requiring physical hardware.
+This document describes the architecture of the ChessLink system and its simulation components. The ChessLink is primarily a **physical chess board with embedded sensors** that transmit real-time data to a web application, with simulation modes provided for development and testing purposes.
 
-## System Overview
+## Primary System Overview
 
-The ChessLink system consists of several components that work together to visualize chess games:
+The ChessLink's core purpose is to create a bridge between physical chess play and digital analysis:
 
-1. **PGN Files**: Source of chess games in Portable Game Notation format
-2. **Emulation Layer**: Two distinct emulators that process PGN files
-   - **WebSocket Emulator**: Sends chess positions to the web application
-   - **Serial Emulator**: Sends chess positions through a serial port
-3. **Web Application**: React-based frontend that displays the chess board
-4. **Hardware**: Physical chess board that connects via serial port (optional)
+1. **Physical Chess Board**: The hardware centerpiece with embedded sensors that detect piece movements
+2. **Sensor Array**: 64-square matrix of Hall effect sensors and phototransistors that detect magnetic chess pieces
+3. **LED System**: RGB LEDs in each square for visual feedback and move guidance
+4. **Microcontroller**: ESP32-C3 with multiple ATtiny microcontrollers for sensor/LED management
+5. **Web Application**: React-based frontend that displays the synchronized digital board
+6. **Communication Layer**: Serial/USB or Wireless connections between hardware and software
 
-## Architecture Diagram
+## Physical Hardware Architecture
 
 ```mermaid
 graph TB
-    subgraph "Data Source"
-        PGN[PGN Files]
+    subgraph "Physical Hardware"
+        BOARD[Physical Chess Board]
+        SENS[Sensor Array]
+        LED[LED Matrix]
+        MCU[ESP32 Microcontroller]
     end
 
-    subgraph "Emulation Layer"
+    subgraph "Communication"
+        SERIAL[Serial/USB]
+        BT[Bluetooth/WiFi]
+    end
+
+    subgraph "Software"
+        WEB[Web Application]
+        CHESS[Chess Engine]
+    end
+
+    BOARD --> SENS
+    SENS --> MCU
+    MCU --> LED
+    LED --> BOARD
+    
+    MCU --> SERIAL
+    MCU --> BT
+    SERIAL --> WEB
+    BT --> WEB
+    WEB --> CHESS
+
+    classDef primary fill:#f9f,stroke:#333,stroke-width:2px
+    classDef communication fill:#bbf,stroke:#333,stroke-width:1px
+    classDef software fill:#bfb,stroke:#333,stroke-width:1px
+    
+    class BOARD,SENS,LED,MCU primary
+    class SERIAL,BT communication
+    class WEB,CHESS software
+```
+
+## Sensor System
+
+The physical board uses two types of sensors to detect chess pieces:
+
+1. **Hall Effect Sensors**: Detect the magnetic field from specially prepared chess pieces
+2. **Phototransistors**: Measure light reflectance from the bottom of pieces for identification
+
+These sensors are organized in an 8×8 matrix configuration and managed by multiple microcontrollers.
+
+## Hardware Circuit Design
+
+```
++-----------------+    +-----------------+    +-----------------+
+| Sensor Module   |    | ATtiny1616 (x16) |    | ESP32-C3        |
+| Phototransistor|====> Each Handles 2×2 |====> Main Controller |
+| Hall Effect     |    | Grid Section     |    | (UART Master)   |
+| IR Emitter      |    | UART to ESP32    |    |                 |
+| RGB LEDs        |    | (4 ATtiny in P1) |    |                 |
++-----------------+    +-----------------+    +-----------------+
+                                                             
+                                               | USB/Bluetooth/WiFi
+                                               v
+                                        +-----------------+
+                                        | Web Application |
+                                        | Chess Display   |
+                                        | Analysis Tools  |
+                                        +-----------------+
+```
+
+## Simulation Architecture
+
+For development and testing without physical hardware, the ChessLink system includes simulation components that emulate the physical board's behavior.
+
+### Simulation Components
+
+1. **PGN Files**: Source of chess games used to generate positions
+2. **Emulation Layer**:
+   - **WebSocket Emulator**: Sends chess positions to the web application via WebSocket
+   - **Serial Emulator**: Sends chess positions through a serial port, mimicking the physical board
+3. **Web Application**: Connects to either the physical hardware or simulation components
+
+```mermaid
+graph TB
+    subgraph "Development Tools"
+        PGN[PGN Files]
         WSE[WebSocket Emulator]
         SE[Serial Emulator]
     end
 
     subgraph "Client Layer"
         WA[Web Application]
-        HW[Hardware Interface]
+        HW[Physical Hardware]
     end
 
     subgraph "Presentation Layer"
@@ -42,46 +119,35 @@ graph TB
     WA --> CB
     HW --> CB
 
-    classDef primary fill:#f9f,stroke:#333,stroke-width:2px
-    classDef secondary fill:#bbf,stroke:#333,stroke-width:1px
-    classDef tertiary fill:#bfb,stroke:#333,stroke-width:1px
+    classDef dev fill:#bbf,stroke:#333,stroke-width:1px
+    classDef client fill:#bfb,stroke:#333,stroke-width:1px
+    classDef presentation fill:#f9f,stroke:#333,stroke-width:2px
     
-    class PGN primary
-    class WSE,SE secondary
-    class WA,HW tertiary
-    class CB primary
+    class PGN,WSE,SE dev
+    class WA,HW client
+    class CB presentation
 ```
 
-## Component Details
-
-### PGN Files
-- Located in `hardware/sim/pgn/`
-- Contains famous chess games in standard PGN format
-- Examples include Anderssen's Immortal Game, Kasparov vs Topalov, etc.
-- Serves as the source of chess positions for simulation
-
-### WebSocket Emulator (`pgn_websocket_emulator.py`)
-- Reads PGN files and converts them to FEN positions
-- Runs a WebSocket server on port 8765
-- Streams chess positions to web clients
-- Supports game selection via query parameters
-- Features loop mode for continuous playback
-
-### Serial Emulator (`pgn_serial_emulator.py`)
-- Reads PGN files and converts them to FEN positions
-- Sends FEN strings through a serial port
-- Can run in simulation mode without hardware
-- Supports interactive port selection
-- Features loop mode for continuous playback
-
-### Web Application (`Demo.tsx`)
-- React-based frontend component
-- Connects to WebSocket emulator to receive positions
-- Renders chess board based on FEN strings
-- Provides UI for selecting games and connection modes
-- Displays player indicators and game information
-
 ## Communication Flow
+
+### Hardware Communication Flow
+
+```mermaid
+sequenceDiagram
+    participant BOARD as Physical Board
+    participant MCU as Microcontroller
+    participant WA as Web Application
+    participant UI as User Interface
+    
+    BOARD->>MCU: Piece movement detected
+    MCU->>MCU: Process sensor data
+    MCU->>WA: Send FEN position
+    WA->>UI: Update board display
+    UI->>MCU: User interaction
+    MCU->>BOARD: Activate LEDs for guidance
+```
+
+### Simulation Communication Flow
 
 ```mermaid
 sequenceDiagram
@@ -103,30 +169,18 @@ sequenceDiagram
     deactivate WS
 ```
 
-## Serial Communication Flow
+## Usage Modes
 
+The ChessLink system supports multiple operating modes:
+
+### Hardware Mode (Primary Use Case)
 ```mermaid
-sequenceDiagram
-    participant PGN as PGN Files
-    participant SE as Serial Emulator
-    participant HW as Hardware
-    participant CB as Chess Board
-    
-    Note over SE: Start(--game=opera)
-    SE->>PGN: Load(opera.pgn)
-    PGN-->>SE: Game Data
-    loop For each position
-        SE-->>HW: FEN Position
-        HW->>CB: Update Board
-        Note over SE: Wait (delay seconds)
-    end
+flowchart LR
+    BOARD[Physical Board] -- Serial/USB/BT --> WA[Web App]
+    WA --> DISPLAY[Chess Display]
 ```
 
-## Simulation Modes
-
-The ChessLink system supports multiple simulation modes to accommodate different testing scenarios:
-
-### WebSocket Mode (for Web Testing)
+### WebSocket Simulation Mode (Development Testing)
 ```mermaid
 flowchart LR
     PGN[PGN Files] --> WSE[WebSocket Emulator]
@@ -134,90 +188,65 @@ flowchart LR
     WA --> CB[Chess Board Display]
 ```
 
-### Serial Mode (for Hardware Testing)
+### Serial Simulation Mode (Hardware Interface Testing)
 ```mermaid
 flowchart LR
     PGN[PGN Files] --> SE[Serial Emulator]
-    SE -- "/dev/cu.usbserial" --> HW[Hardware]
-    HW --> CB[Physical Board]
+    SE -- "/dev/cu.usbserial" --> HW[Hardware Interface]
+    HW --> CB[Board Visualization]
 ```
 
-### Simulation Mode (No Hardware)
-```mermaid
-flowchart LR
-    PGN[PGN Files] --> SE[Serial Emulator]
-    SE -- Terminal Output --> DEV[Developer]
-```
+## Benefits of the Architecture
 
-## Usage Example
+1. **Real Physical Interaction**: Play chess on a tangible board with automatic digital synchronization
+2. **Visual Guidance**: LED system highlights valid moves, checks, and training suggestions
+3. **Development Flexibility**: Simulation modes allow development without physical hardware
+4. **Multiple Testing Paths**: Test both hardware interfaces and software components separately
+5. **Standardized Communication**: Uses FEN notation for consistent data interchange
 
-### Running WebSocket Emulator
-```bash
-./hardware/sim/start_pgn_websocket.sh --game immortal
-```
+## Technical Details
 
-The script will:
-1. Load the "immortal" PGN file
-2. Start a WebSocket server on port 8765
-3. Stream positions from the game with a delay
+### Firmware and Hardware
+- ESP32/Arduino code handling sensor data processing and LED control
+- Custom PCB integrating sensors, LEDs, and microcontrollers
+- Communication via Serial port, Bluetooth, or WiFi
 
-### Running Serial Emulator
-```bash
-./hardware/sim/start_pgn_serial.sh --port /dev/cu.usbserial --game kasparov_topalov
-```
-
-The script will:
-1. Load the "kasparov_topalov" PGN file
-2. Connect to the specified serial port
-3. Stream positions from the game with a delay
+### Software Components
+- React-based web application
+- WebSocket and Serial APIs for real-time communication
+- PGN parsers for chess game simulation
 
 ## Data Flow
 
 ```mermaid
 graph TD
+    subgraph "Physical Board"
+        SENS[Sensors] --> MCU[Microcontroller]
+        MCU --> LED[LED Feedback]
+    end
+
     subgraph "Data Processing"
-        PGN[PGN File] --> |Read file| PARSER[PGN Parser]
-        PARSER --> |Extract moves| BOARD[Chess Board]
-        BOARD --> |Generate positions| FEN[FEN Strings]
+        MCU --> FEN[FEN Generation]
+        PGN[PGN Files] --> PARSER[PGN Parser]
+        PARSER --> FEN
     end
 
     subgraph "Distribution"
-        FEN --> WSS[WebSocket Server]
+        FEN --> WSS[WebSocket]
         FEN --> SP[Serial Port]
     end
 
-    subgraph "Consumption"
-        WSS --> |JSON messages| WA[Web Application]
-        SP --> |Byte stream| HW[Hardware]
-        WA --> UI[User Interface]
-        HW --> PHY[Physical Board]
+    subgraph "Web Application"
+        WSS --> APP[React App]
+        SP --> APP
+        APP --> UI[Chess UI]
     end
     
-    classDef process fill:#f96,stroke:#333
+    classDef hardware fill:#f96,stroke:#333
     classDef data fill:#9cf,stroke:#333
     classDef endpoint fill:#9f9,stroke:#333
     
-    class PGN,FEN data
-    class PARSER,BOARD,WSS,SP process
-    class WA,HW,UI,PHY endpoint
-```
-
-## Architecture Benefits
-
-1. **Decoupled Components**: The emulation layer separates the data source from the presentation layer
-2. **Multiple Testing Paths**: Allows testing both web and hardware interfaces
-3. **Simulation Mode**: Enables development without physical hardware
-4. **Standardized Data**: Uses PGN and FEN standards for data interchange
-5. **Extensible Design**: New games can be added by simply adding PGN files
-
-## Technical Implementation
-
-Both emulators share similar code structure:
-- They parse command-line arguments for configuration
-- They load PGN files and convert them to FEN positions
-- They implement error handling and graceful shutdown
-- They support looping through positions continuously
-
-The main difference is in how they distribute the FEN strings:
-- WebSocket Emulator uses async WebSocket connections
-- Serial Emulator uses synchronous serial port communication 
+    class SENS,MCU,LED hardware
+    class PGN,FEN,PARSER data
+    class APP,UI endpoint
+``` 
