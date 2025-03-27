@@ -1,7 +1,5 @@
 # ChessLink - Smart Hardware Chess Interface
 
-![ChessLink Banner](public/images/chesslink_banner.png)
-
 **ChessLink** is a smart chess interface that bridges physical chess with digital capabilities. The hardware-focused system uses custom sensor arrays to detect moves on a physical board and synchronize them with a digital platform for analysis, training, and connected play.
 
 ---
@@ -258,5 +256,3 @@ Additional options:
 The WebSocket server reads each PGN file, converts the moves to FEN strings, and sends them to the web application. The web app then displays the positions on the chess board, creating a visualization of the game.
 
 ---
-
-*Documentation last updated: August 2023*
