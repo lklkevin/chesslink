@@ -176,30 +176,37 @@ def send_fen_game(port, baud_rate, delay, positions, headers, verbose=False, loo
             print(f"Connected to {port} at {baud_rate} baud")
             print(f"Sending game: {headers.get('Event', 'Unknown')} - {headers.get('White', 'Unknown')} vs {headers.get('Black', 'Unknown')}")
             
-            while True:  # Loop to support replaying the game
-                for i, fen in enumerate(positions):
-                    print(f"Move {i}: Sending FEN: {fen}")
-                    ser.write(fen.encode('utf-8'))  # Send FEN as bytes
-                    ser.write(b'\n')  # Newline to mark end of message
-                    
-                    if verbose:
-                        print(f"Data sent. Waiting for {delay} seconds...")
-                    
-                    time.sleep(delay)  # Wait before sending next move
-                    
-                    if verbose:
+            try:
+                while True:  # Loop to support replaying the game
+                    for i, fen in enumerate(positions):
+                        print(f"Move {i}: Sending FEN: {fen}")
+                        ser.write(fen.encode('utf-8'))  # Send FEN as bytes
+                        ser.write(b'\n')  # Newline to mark end of message
+                        
+                        if verbose:
+                            print(f"Data sent. Waiting for {delay} seconds...")
+                        
                         try:
-                            response = ser.read_all().decode('utf-8').strip()
-                            if response:
-                                print(f"Response received: {response}")
-                        except Exception as e:
-                            print(f"Error reading response: {e}")
-                
-                print("Game Over! All moves sent.")
-                if not loop:
-                    break
-                print("Looping back to start...")
-                
+                            time.sleep(delay)  # Wait before sending next move
+                        except KeyboardInterrupt:
+                            print("\nTransmission interrupted by user")
+                            return
+                        
+                        if verbose:
+                            try:
+                                response = ser.read_all().decode('utf-8').strip()
+                                if response:
+                                    print(f"Response received: {response}")
+                            except Exception as e:
+                                print(f"Error reading response: {e}")
+                    
+                    print("Game Over! All moves sent.")
+                    if not loop:
+                        break
+                    print("Looping back to start...")
+            except KeyboardInterrupt:
+                print("\nTransmission interrupted by user")
+                # No need to close the serial port here as the 'with' statement will handle it
     except serial.SerialException as e:
         print(f"Error: Could not open serial port {port}: {e}")
         print("\nAvailable ports on your system:")
@@ -232,86 +239,97 @@ def simulate_fen_game(delay, positions, headers, verbose=False, loop=False):
     print("This mode is useful when the port is already in use by another application")
     print(f"Simulating game: {headers.get('Event', 'Unknown')} - {headers.get('White', 'Unknown')} vs {headers.get('Black', 'Unknown')}")
     
-    while True:  # Loop to support replaying the game
-        for i, fen in enumerate(positions):
-            player_turn = "White" if fen.split(' ')[1] == 'w' else "Black"
-            print(f"Move {i}: {player_turn}'s turn")
-            print(f"FEN: {fen}")
-            if verbose:
-                print(f"Waiting for {delay} seconds...")
-            time.sleep(delay)
-        
-        print("Game Over! All moves simulated.")
-        if not loop:
-            break
-        print("Looping back to start...")
+    try:
+        while True:  # Loop to support replaying the game
+            for i, fen in enumerate(positions):
+                player_turn = "White" if fen.split(' ')[1] == 'w' else "Black"
+                print(f"Move {i}: {player_turn}'s turn")
+                print(f"FEN: {fen}")
+                if verbose:
+                    print(f"Waiting for {delay} seconds...")
+                try:
+                    time.sleep(delay)
+                except KeyboardInterrupt:
+                    print("\nSimulation interrupted by user")
+                    return
+            
+            print("Game Over! All moves simulated.")
+            if not loop:
+                break
+            print("Looping back to start...")
+    except KeyboardInterrupt:
+        print("\nSimulation interrupted by user")
+    
 
 if __name__ == "__main__":
-    args = parse_arguments()
-    
-    # Check if PGN directory exists
-    if not os.path.isdir(args.pgn_dir):
-        print(f"PGN directory does not exist: {args.pgn_dir}")
-        sys.exit(1)
-    
-    # Get available PGN files
-    pgn_files = list_pgn_files(args.pgn_dir)
-    if not pgn_files:
-        print(f"No PGN files found in directory: {args.pgn_dir}")
-        sys.exit(1)
-    
-    # List available games if requested
-    if args.list_games:
-        print("Available PGN files:")
-        for game_id, file_path in pgn_files.items():
-            game_info = load_pgn(file_path)
-            print(f"  {game_id}: {game_info['headers'].get('Event', 'Unknown')} - {game_info['headers'].get('White', 'Unknown')} vs {game_info['headers'].get('Black', 'Unknown')}")
-        sys.exit(0)
-    
-    # Select game
-    game_id = args.game
-    if game_id is None:
-        # If no game specified, use an interactive selection
-        game_id = select_game_interactively(pgn_files)
-    elif game_id not in pgn_files:
-        print(f"Game '{game_id}' not found. Available games: {', '.join(pgn_files.keys())}")
-        game_id = select_game_interactively(pgn_files)
-    
-    # Load the game
-    pgn_file = pgn_files[game_id]
-    game_info = load_pgn(pgn_file)
-    if not game_info["positions"]:
-        print(f"Could not load positions from PGN file: {pgn_file}")
-        sys.exit(1)
-    
-    # Use simulation mode if requested
-    if args.simulate:
-        simulate_fen_game(args.delay, game_info["positions"], game_info["headers"], args.verbose, args.loop)
-        sys.exit(0)
-    
-    # Select port
-    if args.list_ports:
-        port = select_port_interactively()
-    else:
-        # If no port specified, use an interactive selection
-        if args.port is None:
-            # For macOS, try to select a reasonable default
-            ports = get_available_ports()
-            potential_ports = [p for p in ports if "cu." in p.device and "Bluetooth" not in p.device]
-            if potential_ports:
-                port = potential_ports[0].device
-                print(f"Auto-selecting port: {port}")
-            else:
-                print("No port specified. Please select a port:")
-                port = select_port_interactively()
-        else:
-            port = args.port
-    
-    print(f"PGN to Serial Chess Emulator - Ready to send {game_id} on {port}")
-    print(f"Press Ctrl+C to abort at any time")
-    
     try:
+        args = parse_arguments()
+        
+        # Check if PGN directory exists
+        if not os.path.isdir(args.pgn_dir):
+            print(f"PGN directory does not exist: {args.pgn_dir}")
+            sys.exit(1)
+        
+        # Get available PGN files
+        pgn_files = list_pgn_files(args.pgn_dir)
+        if not pgn_files:
+            print(f"No PGN files found in directory: {args.pgn_dir}")
+            sys.exit(1)
+        
+        # List available games if requested
+        if args.list_games:
+            print("Available PGN files:")
+            for game_id, file_path in pgn_files.items():
+                game_info = load_pgn(file_path)
+                print(f"  {game_id}: {game_info['headers'].get('Event', 'Unknown')} - {game_info['headers'].get('White', 'Unknown')} vs {game_info['headers'].get('Black', 'Unknown')}")
+            sys.exit(0)
+        
+        # Select game
+        game_id = args.game
+        if game_id is None:
+            # If no game specified, use an interactive selection
+            game_id = select_game_interactively(pgn_files)
+        elif game_id not in pgn_files:
+            print(f"Game '{game_id}' not found. Available games: {', '.join(pgn_files.keys())}")
+            game_id = select_game_interactively(pgn_files)
+        
+        # Load the game
+        pgn_file = pgn_files[game_id]
+        game_info = load_pgn(pgn_file)
+        if not game_info["positions"]:
+            print(f"Could not load positions from PGN file: {pgn_file}")
+            sys.exit(1)
+        
+        # Use simulation mode if requested
+        if args.simulate:
+            simulate_fen_game(args.delay, game_info["positions"], game_info["headers"], args.verbose, args.loop)
+            sys.exit(0)
+        
+        # Select port
+        if args.list_ports:
+            port = select_port_interactively()
+        else:
+            # If no port specified, use an interactive selection
+            if args.port is None:
+                # For macOS, try to select a reasonable default
+                ports = get_available_ports()
+                potential_ports = [p for p in ports if "cu." in p.device and "Bluetooth" not in p.device]
+                if potential_ports:
+                    port = potential_ports[0].device
+                    print(f"Auto-selecting port: {port}")
+                else:
+                    print("No port specified. Please select a port:")
+                    port = select_port_interactively()
+            else:
+                port = args.port
+        
+        print(f"PGN to Serial Chess Emulator - Ready to send {game_id} on {port}")
+        print(f"Press Ctrl+C to abort at any time")
+        
         send_fen_game(port, args.baud, args.delay, game_info["positions"], game_info["headers"], args.verbose, args.loop)
     except KeyboardInterrupt:
         print("\nEmulator stopped by user")
-        sys.exit(0) 
+        sys.exit(0)
+    except Exception as e:
+        print(f"\nError: {e}")
+        sys.exit(1) 
