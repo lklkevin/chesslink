@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { Chessboard } from 'react-chessboard';
@@ -7,23 +7,27 @@ import { Chess } from 'chess.js';
 export default function GameDetail() {
   const router = useRouter();
   const { id } = router.query;
-  
+
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [tempError, setTempError] = useState(null);
   const [ports, setPorts] = useState([]);
   const [selectedPort, setSelectedPort] = useState('');
   const [connected, setConnected] = useState(false);
+  const [connectedPort, setConnectedPort] = useState(null);
   const [pollingInterval, setPollingInterval] = useState(null);
-  
+  const isInitialLoad = useRef(true);
+  const prevMoveCount = useRef(0);
+
   // Chess board state
   const [selectedMoveIndex, setSelectedMoveIndex] = useState(0);
   const [chessInstance, setChessInstance] = useState(null);
   const [boardOrientation, setBoardOrientation] = useState('white');
-  const [gameStatus, setGameStatus] = useState({ 
-    isOver: false, 
-    result: null, 
-    reason: null 
+  const [gameStatus, setGameStatus] = useState({
+    isOver: false,
+    result: null,
+    reason: null
   });
 
   // Fetch game data on initial load
@@ -31,52 +35,110 @@ export default function GameDetail() {
     if (!id) return;
     fetchGameData();
     fetchSerialPorts();
+    checkExistingConnection();
   }, [id]);
 
-  // Initialize chess instance when game data is loaded or updated
+  // Initialize chess instance only on initial game load
   useEffect(() => {
-    if (game && game.moves && game.moves.length > 0) {
-      // Default to showing the latest position
+    if (game && game.moves && game.moves.length > 0 && isInitialLoad.current) {
+      // Default to showing the latest position on initial load
+      console.log("Initial load: Setting board to latest position.");
       updateBoardPosition(game.moves.length - 1);
+      isInitialLoad.current = false; // Mark initial load as complete
     }
   }, [game]);
 
-  // Set up polling when connected
+  // Effect to handle auto-advancing the board when new moves arrive via polling
   useEffect(() => {
-    // Clear existing interval when component unmounts or connection status changes
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-    };
-  }, [pollingInterval]);
+    // Don't run on initial load or if game data isn't available
+    if (isInitialLoad.current || !game || !game.moves) return;
 
-  // Start polling when connected
-  useEffect(() => {
-    if (connected) {
-      // Poll every 2 seconds
-      const interval = setInterval(() => {
-        fetchActiveGameState();
-      }, 2000);
-      setPollingInterval(interval);
-    } else {
-      // Clear interval when disconnected
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        setPollingInterval(null);
+    const currentMoveCount = game.moves.length;
+    const previousCount = prevMoveCount.current;
+
+    // Check if new moves have been added (polling update)
+    if (currentMoveCount > previousCount) {
+      console.log(`Auto-advance check: New moves detected (${previousCount} -> ${currentMoveCount})`);
+      // Check if the user was viewing the latest move BEFORE the update
+      const wasViewingLatestMoveIndex = previousCount - 1;
+      if (selectedMoveIndex === wasViewingLatestMoveIndex) {
+        console.log(`User was viewing the latest move (${wasViewingLatestMoveIndex}). Auto-advancing.`);
+        const newLatestIndex = currentMoveCount - 1;
+        const latestFen = game.moves[newLatestIndex]?.fen;
+
+        if (latestFen) {
+          try {
+            const newChessInstance = new Chess(latestFen);
+            setSelectedMoveIndex(newLatestIndex); 
+            setChessInstance(newChessInstance);
+            updateGameStatus(newChessInstance);
+          } catch (err) {
+              console.error("Error creating Chess instance during auto-advance useEffect:", err);
+          }
+        } else {
+           console.error("Could not find FEN for auto-advance target.")
+        }
+      } else {
+         console.log(`User was not viewing the latest move (viewing ${selectedMoveIndex}, latest was ${wasViewingLatestMoveIndex}). No auto-advance.`);
       }
     }
+
+    // Always update the ref with the current move count for the next check
+    prevMoveCount.current = currentMoveCount;
+
+  }, [game, selectedMoveIndex]); // Depend on game and selectedMoveIndex
+
+  // Set up polling when connected
+  useEffect(() => {
+    let interval = null;
+
+    if (connected) {
+      // Immediately fetch the current state
+      fetchActiveGameState();
+      // Then start polling
+      interval = setInterval(() => {
+        fetchActiveGameState();
+      }, 2000);
+    }
+
+    // Cleanup function
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [connected, id]);
 
+  // Add effect to handle temporary errors
+  useEffect(() => {
+    if (tempError) {
+      const timer = setTimeout(() => {
+        setTempError(null);
+      }, 5000); // Clear after 5 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [tempError]);
+
   const updateBoardPosition = (moveIndex) => {
-    if (!game || !game.moves || moveIndex < 0 || moveIndex >= game.moves.length) return;
-    
+    // Guard against invalid index or missing game data during manual navigation
+    if (!game || !game.moves || moveIndex < 0 || moveIndex >= game.moves.length) {
+        console.warn(`updateBoardPosition called with invalid index ${moveIndex} or missing game data.`);
+        return;
+    }
+
     try {
+      // Get FEN from the current game state for the selected move index
       const fen = game.moves[moveIndex].fen;
+      if (!fen) {
+          console.error(`Could not find FEN for move index ${moveIndex}`);
+          return;
+      }
       const chess = new Chess(fen);
-      setChessInstance(chess);
+
+      // Update state for manual navigation
       setSelectedMoveIndex(moveIndex);
-      
+      setChessInstance(chess);
+
       // Check for game ending conditions
       const status = {
         isOver: false,
@@ -89,7 +151,7 @@ export default function GameDetail() {
         status.isOver = true;
         status.result = chess.turn() === 'w' ? '0-1' : '1-0';
         status.reason = 'Checkmate';
-      } 
+      }
       // Check for stalemate
       else if (chess.isStalemate()) {
         status.isOver = true;
@@ -99,7 +161,7 @@ export default function GameDetail() {
       // Check for draw by insufficient material
       else if (chess.isInsufficientMaterial()) {
         status.isOver = true;
-        status.result = '½-½'; 
+        status.result = '½-½';
         status.reason = 'Insufficient material';
       }
       // Check for draw by threefold repetition
@@ -121,14 +183,14 @@ export default function GameDetail() {
 
       setGameStatus(status);
     } catch (err) {
-      console.error('Error updating board position:', err);
+      console.error('Error updating board position manually:', err);
     }
   };
 
   const updateGameResult = async (result) => {
     try {
       console.log(`Attempting to update game ${id} result to: ${result}`);
-      
+
       const response = await fetch(`/api/games/${id}/update-result`, {
         method: 'POST',
         headers: {
@@ -136,25 +198,26 @@ export default function GameDetail() {
         },
         body: JSON.stringify({ result }),
       });
-      
+
       console.log(`Response status: ${response.status}`);
       const responseData = await response.json();
       console.log('Response data:', responseData);
-      
+
       if (!response.ok) {
-        throw new Error(`Failed to update game result: ${responseData.message || 'Unknown error'}`);
+        setTempError(`Failed to update game result: ${responseData.message || 'Unknown error'}`);
+        return;
       }
-      
+
       // Update local state
       setGame(prevGame => ({
         ...prevGame,
         result
       }));
-      
+
       console.log(`Game result updated to ${result}`);
     } catch (err) {
       console.error('Error updating game result:', err);
-      setError(`Failed to update game result: ${err.message}`);
+      setTempError('Failed to update game result');
     }
   };
 
@@ -171,14 +234,15 @@ export default function GameDetail() {
       setLoading(true);
       const response = await fetch(`/api/games/${id}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch game data');
+        setTempError('Failed to fetch game data');
+        return;
       }
       const data = await response.json();
       setGame(data.game);
       setLoading(false);
     } catch (err) {
       console.error('Error fetching game data:', err);
-      setError('Failed to load game data. Please try again later.');
+      setTempError('Failed to load game data. Please try again later.');
       setLoading(false);
     }
   };
@@ -187,7 +251,8 @@ export default function GameDetail() {
     try {
       const response = await fetch('/api/serial/ports');
       if (!response.ok) {
-        throw new Error('Failed to fetch serial ports');
+        setTempError('Failed to fetch serial ports');
+        return;
       }
       const data = await response.json();
       setPorts(data.ports || []);
@@ -196,48 +261,88 @@ export default function GameDetail() {
       }
     } catch (err) {
       console.error('Error fetching serial ports:', err);
-      setError('Failed to load serial ports. Please try again later.');
+      setTempError('Failed to load serial ports. Please try again later.');
     }
   };
 
   const fetchActiveGameState = async () => {
     if (!id || !connected) return;
-    
+
     try {
       const response = await fetch(`/api/games/${id}/state`);
       if (!response.ok) {
-        // If we get a 400, the game is no longer active
         if (response.status === 400) {
           setConnected(false);
+          setConnectedPort(null);
           return;
         }
-        throw new Error('Failed to fetch active game state');
+        setTempError('Failed to fetch active game state');
+        return;
       }
       const data = await response.json();
-      setGame(data.game);
       
-      // Update board if we're viewing the latest move
-      if (selectedMoveIndex === (game?.moves?.length - 1)) {
-        updateBoardPosition(data.game.moves.length - 1);
+      // Store the new game data
+      const newGameData = data.game;
+      
+      // Only update the game state. The auto-advance logic is handled in a separate useEffect.
+      setGame(newGameData);
+
+      // Update connection state (if needed, though game state includes it)
+      if (data.connection) {
+        setConnected(data.connection.connected);
+        setConnectedPort(data.connection.port);
       }
+      
     } catch (err) {
       console.error('Error fetching active game state:', err);
-      // Don't set error message for polling errors to avoid UI noise
     }
+  };
+
+  // Helper function to update game status based on a chess instance
+  const updateGameStatus = (chess) => {
+      const status = {
+        isOver: false,
+        result: null,
+        reason: null
+      };
+      if (chess.isCheckmate()) {
+        status.isOver = true;
+        status.result = chess.turn() === 'w' ? '0-1' : '1-0';
+        status.reason = 'Checkmate';
+      } else if (chess.isStalemate()) {
+        status.isOver = true;
+        status.result = '½-½';
+        status.reason = 'Stalemate';
+      } else if (chess.isInsufficientMaterial()) {
+        status.isOver = true;
+        status.result = '½-½';
+        status.reason = 'Insufficient material';
+      } else if (chess.isThreefoldRepetition()) {
+        status.isOver = true;
+        status.result = '½-½';
+        status.reason = 'Threefold repetition';
+      } else if (chess.isDraw()) {
+        status.isOver = true;
+        status.result = '½-½';
+        status.reason = 'Draw';
+      } else if (chess.isCheck()) {
+        status.reason = 'Check';
+      }
+      setGameStatus(status);
   };
 
   const handleConnect = async () => {
     if (!selectedPort) {
-      setError('Please select a serial port');
+      setTempError('Please select a serial port');
       return;
     }
-    
+
     // Don't attempt to connect if game is already completed
     if (game.result !== '*') {
-      setError('Cannot connect to a completed game. Only in-progress games can be connected to.');
+      setTempError('Cannot connect to a completed game. Only in-progress games can be connected to.');
       return;
     }
-    
+
     try {
       const response = await fetch('/api/serial/connect', {
         method: 'POST',
@@ -250,17 +355,19 @@ export default function GameDetail() {
           baud_rate: 115200
         }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to connect to serial port');
+        setTempError(errorData.message || 'Failed to connect to serial port');
+        return;
       }
-      
+
       setConnected(true);
-      setError(null);
+      setConnectedPort(selectedPort);
+      setTempError(null);
     } catch (err) {
       console.error('Error connecting to serial port:', err);
-      setError(err.message || 'Failed to connect to serial port');
+      setTempError('Failed to connect to serial port');
     }
   };
 
@@ -272,18 +379,20 @@ export default function GameDetail() {
           'Content-Type': 'application/json',
         }
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to disconnect from serial port');
+        setTempError(errorData.message || 'Failed to disconnect from serial port');
+        return;
       }
-      
+
       setConnected(false);
+      setConnectedPort(null);
       // Refresh game data after disconnect to get the final saved state
       fetchGameData();
     } catch (err) {
       console.error('Error disconnecting from serial port:', err);
-      setError(err.message || 'Failed to disconnect from serial port');
+      setTempError('Failed to disconnect from serial port');
     }
   };
 
@@ -294,15 +403,15 @@ export default function GameDetail() {
   const handleMoveClick = (index) => {
     updateBoardPosition(index);
   };
-  
+
   const generatePGN = () => {
     if (!game || !game.moves || game.moves.length <= 1) {
       return '';
     }
-    
+
     // Create a new chess.js instance to build the game
     const chess = new Chess();
-    
+
     // Add header information
     const headers = [
       ['Event', game.event || '?'],
@@ -313,16 +422,20 @@ export default function GameDetail() {
       ['Black', game.black || '?'],
       ['Result', game.result || '*']
     ];
-    
+
+    headers.forEach(([key, value]) => {
+      chess.header(key, value);
+    });
+
     // Skip the first move (initial position)
     for (let i = 1; i < game.moves.length; i++) {
       const move = game.moves[i];
-      
+
       // Skip illegal or missing moves
       if (!move.algebraic || move.is_legal === false) {
-        continue;
+        return chess.pgn();
       }
-      
+
       try {
         // Add the move to the chess instance
         chess.move(move.algebraic);
@@ -331,39 +444,53 @@ export default function GameDetail() {
         // Continue with the next move if one fails
       }
     }
-    
-    // Set header information
-    headers.forEach(([key, value]) => {
-      chess.header(key, value);
-    });
-    
+
     // Generate PGN string
     return chess.pgn();
   };
-  
+
   const downloadPGN = () => {
     const pgn = generatePGN();
     if (!pgn) {
-      setError('No moves available to export');
+      setTempError('No moves available to export');
       return;
     }
-    
+
     // Create a blob with the PGN content
     const blob = new Blob([pgn], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
-    
+
     // Create a temporary link element to trigger the download
     const a = document.createElement('a');
     a.href = url;
     a.download = `${game.white}-vs-${game.black}-${game.date}.pgn`.replace(/\s+/g, '_');
     document.body.appendChild(a);
     a.click();
-    
+
     // Clean up
     setTimeout(() => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }, 100);
+  };
+
+  // Add new function to check for existing connection
+  const checkExistingConnection = async () => {
+    if (!id) return;
+
+    try {
+      const response = await fetch(`/api/games/${id}/state`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.connection && data.connection.connected) {
+          setConnected(true);
+          setConnectedPort(data.connection.port);
+          // The polling will be handled by the useEffect hook
+        }
+      }
+    } catch (err) {
+      console.error('Error checking existing connection:', err);
+    }
   };
 
   if (loading) {
@@ -400,13 +527,19 @@ export default function GameDetail() {
             Back to Games
           </Link>
         </div>
-        
+
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-3 text-sm">
             {error}
           </div>
         )}
-        
+
+        {tempError && (
+          <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded shadow-lg text-sm z-50 animate-fade-in">
+            {tempError}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Left column - Chess board and controls */}
           <div>
@@ -427,7 +560,7 @@ export default function GameDetail() {
               <div className="p-3">
                 <div className="aspect-square w-full mb-2">
                   {chessInstance && (
-                    <Chessboard 
+                    <Chessboard
                       position={chessInstance.fen()}
                       boardOrientation={boardOrientation}
                       arePiecesDraggable={false}
@@ -435,11 +568,10 @@ export default function GameDetail() {
                   )}
                 </div>
                 {gameStatus.isOver && (
-                  <div className={`p-2 text-center font-bold mb-2 rounded ${
-                    gameStatus.result === '1-0' ? 'bg-green-100 text-green-800' :
-                    gameStatus.result === '0-1' ? 'bg-red-100 text-red-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>
+                  <div className={`p-2 text-center font-bold mb-2 rounded ${gameStatus.result === '1-0' ? 'bg-green-100 text-green-800' :
+                      gameStatus.result === '0-1' ? 'bg-red-100 text-red-800' :
+                        'bg-blue-100 text-blue-800'
+                    }`}>
                     Game Over: {gameStatus.result} - {gameStatus.reason}
                   </div>
                 )}
@@ -452,14 +584,14 @@ export default function GameDetail() {
                   {game.moves && game.moves[selectedMoveIndex] && (
                     <div>
                       <p className="font-medium">
-                        {selectedMoveIndex === 0 
-                          ? 'Initial Position' 
+                        {selectedMoveIndex === 0
+                          ? 'Initial Position'
                           : `Move ${Math.ceil(selectedMoveIndex / 2)}: ${game.moves[selectedMoveIndex].algebraic || '[unknown]'}`
                         }
                       </p>
                       <p className="text-gray-500 text-xs mt-1">
-                        {selectedMoveIndex === 0 
-                          ? "White's turn" 
+                        {selectedMoveIndex === 0
+                          ? "White's turn"
                           : `${game.moves[selectedMoveIndex].player}'s turn`
                         }
                       </p>
@@ -498,7 +630,7 @@ export default function GameDetail() {
                 </div>
               </div>
             </div>
-            
+
             {/* Game Information */}
             <div className="bg-white shadow-md rounded-lg overflow-hidden mb-4">
               <div className="p-3 bg-gray-100 border-b border-gray-200">
@@ -540,7 +672,7 @@ export default function GameDetail() {
                     <p className="text-gray-800">{game.moves ? game.moves.length - 1 : 0}</p>
                   </div>
                 </div>
-                
+
                 {/* Manual Result Update Section */}
                 <div className="mt-3 pt-2 border-t border-gray-200">
                   <div className="flex items-center justify-between mb-1">
@@ -579,7 +711,7 @@ export default function GameDetail() {
               </div>
             </div>
           </div>
-          
+
           {/* Right column - Serial connection and move list */}
           <div>
             {/* Serial Port Connection */}
@@ -591,9 +723,9 @@ export default function GameDetail() {
                 {connected ? (
                   <div>
                     <div className="mb-2 p-2 bg-green-50 border border-green-200 text-green-700 rounded text-sm">
-                      Connected to serial port: {selectedPort}
+                      Connected to serial port: {connectedPort}
                     </div>
-                    <button 
+                    <button
                       onClick={handleDisconnect}
                       className="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded shadow text-sm"
                     >
@@ -624,7 +756,7 @@ export default function GameDetail() {
                       </select>
                     </div>
                     <div>
-                      <button 
+                      <button
                         onClick={handleConnect}
                         disabled={!selectedPort}
                         className={`${!selectedPort ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white font-bold py-1 px-3 rounded shadow text-sm`}
@@ -633,7 +765,7 @@ export default function GameDetail() {
                       </button>
                     </div>
                     <div>
-                      <button 
+                      <button
                         onClick={fetchSerialPorts}
                         className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded shadow text-sm"
                       >
@@ -686,8 +818,8 @@ export default function GameDetail() {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {game.moves.map((move, index) => (
-                          <tr 
-                            key={move.move_id} 
+                          <tr
+                            key={move.move_id}
                             className={`hover:bg-gray-50 cursor-pointer ${index === selectedMoveIndex ? 'bg-blue-50' : ''}`}
                             onClick={() => handleMoveClick(index)}
                           >

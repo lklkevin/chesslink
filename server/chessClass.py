@@ -365,7 +365,7 @@ class ChessGame:
         """List all games in the database"""
         session = Session()
         try:
-            games = session.query(ChessGameModel).all()
+            games = session.query(ChessGameModel).order_by(ChessGameModel.created_at.desc()).all()
             return [(g.game_id, g.white, g.black, g.date, g.result) for g in games]
         except Exception as e:
             print(f"[ERROR] Failed to list games: {str(e)}")

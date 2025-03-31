@@ -24,38 +24,119 @@ FEN_PATTERN = re.compile(r"^[1-8pnbrqkPNBRQK/]+ [wb] [KQkq-]+ [a-h1-8-]+ \d+ \d+
 def read_serial_data():
     global serial_connection, active_game, stop_thread
     
+    last_malformed_line_logged = None  # Keep track of the last logged malformed line (as string)
+    
     while not stop_thread and serial_connection and serial_connection.is_open:
+        raw_lines_read = [] # Store raw bytes read
+        data_to_process = [] # Store valid FEN strings
+        read_limit_hit = False
+        
         try:
-            # Read data from serial port
+            # --- Phase 1: Read all available lines as raw bytes --- 
             if serial_connection.in_waiting > 0:
-                try:
-                    line = serial_connection.readline().decode('utf-8', errors='replace').strip()
-                    print(f"Read from serial: {line}")
-                    
-                    # Validate as FEN
-                    if FEN_PATTERN.match(line):
-                        # Add valid FEN to processing queue
-                        active_game.add_to_queue(line)
-                        # Process the queue
-                        active_game.process_queue()
-                    else:
-                        print(f"Invalid FEN format: {line}")
-                except UnicodeDecodeError as e:
-                    # Handle decode errors more gracefully
-                    print(f"Error decoding serial data: {e}")
-                    # Try to clear the buffer
-                    serial_connection.reset_input_buffer()
+                read_count = 0
+
+                while serial_connection.in_waiting > 0:
+                    try:
+                        # Read raw bytes, keep newline
+                        raw_line = serial_connection.readline()
+                        if not raw_line: # Break if readline returns empty (e.g., timeout)
+                            break 
+                        raw_lines_read.append(raw_line)
+                        read_count += 1
+                    except serial.SerialException as ser_e:
+                        print(f"Serial error during read: {ser_e}")
+                        # Attempt to clear buffer on serial error
+                        try: serial_connection.reset_input_buffer() 
+                        except: pass
+                        last_malformed_line_logged = None
+                        raw_lines_read = [] # Discard potentially corrupted data
+                        break # Exit inner read loop
+                    except Exception as read_e:
+                        print(f"Unexpected error during readline: {read_e}")
+                        break # Exit inner read loop
+
+            # --- Phase 2: Decode and Validate collected raw lines --- 
+            processed_any_line = False # Did we attempt to process anything?
+            if raw_lines_read:
+                print(f"Decoding and validating {len(raw_lines_read)} lines read from serial.")
+                for raw_line in raw_lines_read:
+                    processed_any_line = True
+                    try:
+                        line = raw_line.decode('utf-8', errors='replace').strip()
+                        
+                        if line:  # Skip empty lines after stripping
+                            # More thorough FEN validation
+                            if FEN_PATTERN.match(line):
+                                position_part = line.split(' ')[0]
+                                rows = position_part.split('/')
+                                
+                                if len(rows) == 8:
+                                    data_to_process.append(line)
+                                    last_malformed_line_logged = None # Valid data resets the error logging
+                                else:
+                                    # Log only if it's a NEW malformed line
+                                    if line != last_malformed_line_logged:
+                                        print(f"Malformed FEN (wrong number of rows): {line}")
+                                        last_malformed_line_logged = line
+                            else:
+                                # Log only if it's a NEW invalid line
+                                if line != last_malformed_line_logged:
+                                    print(f"Invalid FEN format: {line}")
+                                    last_malformed_line_logged = line
+                        else:
+                             last_malformed_line_logged = None # Treat empty lines as resetting error state
+                             
+                    except UnicodeDecodeError as decode_e:
+                         # Log only if it's a NEW decode error
+                         err_repr = repr(raw_line) # Get representation of failing bytes
+                         if err_repr != last_malformed_line_logged:
+                            print(f"Error decoding serial data: {decode_e} - Bytes: {err_repr}")
+                            last_malformed_line_logged = err_repr
+                    except Exception as proc_e:
+                        print(f"Unexpected error processing line: {proc_e}")
+                        last_malformed_line_logged = None # Reset on unexpected error
             
-            # Small sleep to prevent CPU hogging
-            time.sleep(0.1)
+            # Reset error tracking if we processed lines and didn't end on an error
+            if processed_any_line and data_to_process and data_to_process[-1] == line:
+                 last_malformed_line_logged = None
+                 
+            # --- Phase 3: Flush buffer if read limit was hit --- 
+            if read_limit_hit:
+                print("Flushing input buffer after hitting read limit.")
+                try: 
+                    # Clear any remaining data
+                    serial_connection.reset_input_buffer() 
+                except: pass
+                last_malformed_line_logged = None # Reset after flush
+                
+            # --- Phase 4: Process valid data --- 
+            if data_to_process and active_game:
+                print(f"Processing {len(data_to_process)} valid FEN positions")
+                for fen in data_to_process:
+                    active_game.add_to_queue(fen)
+                active_game.process_queue() # Process the whole batch at once
+
+            # --- Phase 5: Small sleep --- 
+            time.sleep(0.1) # Prevent CPU hogging
+            
+        except serial.SerialException as outer_ser_e:
+            print(f"Serial connection error: {outer_ser_e}. Stopping thread.")
+            serial_connection = None # Assume connection is lost
+            stop_thread = True # Signal thread stop
+            last_malformed_line_logged = None
         except Exception as e:
-            print(f"Error reading serial data: {e}")
-            # Don't immediately break on errors, try to recover
+            print(f"Error in serial reading loop: {e}")
+            # Attempt recovery
             try:
                 if serial_connection and serial_connection.is_open:
                     serial_connection.reset_input_buffer()
+                    last_malformed_line_logged = None # Reset after error
+                else:
+                     # If connection closed unexpectedly, stop thread
+                     stop_thread = True
             except:
-                pass
+                 stop_thread = True # Stop if recovery fails
             time.sleep(1)  # Wait a bit longer before trying again
     
     print("Serial reading thread stopped")
@@ -317,7 +398,7 @@ def disconnect_serial():
 @app.route('/games/<game_id>/state', methods=['GET'])
 def get_game_state(game_id):
     """Get the current state of an active game"""
-    global active_game
+    global active_game, serial_connection
     
     try:
         if not active_game or active_game.game_id != game_id:
@@ -351,6 +432,10 @@ def get_game_state(game_id):
                 'black': active_game.black,
                 'result': active_game.result,
                 'moves': moves
+            },
+            'connection': {
+                'connected': serial_connection is not None and serial_connection.is_open,
+                'port': serial_connection.port if serial_connection and serial_connection.is_open else None
             }
         }), 200
             
