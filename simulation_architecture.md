@@ -21,7 +21,7 @@ graph TB
         BOARD[Physical Chess Board]
         SENS[Sensor Array]
         LED[LED Matrix]
-        MCU[ESP32 Microcontroller]
+        MCU[Arduino Nano ATmega328P microcontroller]
     end
 
     subgraph "Communication"
@@ -67,7 +67,7 @@ These sensors are organized in an 8×8 matrix configuration and managed by multi
 
 ```
 +-----------------+    +-----------------+    +-----------------+
-| Sensor Module   |    | ATtiny1616 (x16) |    | ESP32-C3        |
+| Sensor Module   |    | Arduino Nano (x16) |    | Arduino     |
 | Phototransistor|====> Each Handles 2×2 |====> Main Controller |
 | Hall Effect     |    | Grid Section     |    | (UART Master)   |
 | IR Emitter      |    | UART to ESP32    |    |                 |
