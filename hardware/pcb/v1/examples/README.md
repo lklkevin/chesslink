@@ -1,0 +1,1 @@
+This folder contains a variety of files to help debug and test sensors.
