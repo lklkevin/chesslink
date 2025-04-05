@@ -60,9 +60,22 @@ void printBoard() {
 
 
 void loop() {
-  for (auto unit : units) {
+  String fen = "";
+
+  // for (auto unit : units) {
+  for (int i = 0; i < BOARD_SIZE*2; i++) {
+    auto unit = units[i];
     unit->readSensors();
     unit->printStatus();
+
+    char piece = unit->detectPiece();
+    Serial.print("FEN Piece: ");
+    Serial.println(piece);
+
+    fen += (piece == ' ') ? '1' : piece;
+
+    // Add '/' between ranks (after 2 units)
+    if (i == 1) fen += '/';
 
     // // Optional: visualize result
     // if (unit->isMagnetDetected())
@@ -71,9 +84,9 @@ void loop() {
     //   unit->setColor(255, 255, 255);  // off otherwise, cathodes
   }
 
-  const char* fen = "r1/1K";  // top-left rook, bottom-right King
-  parseFEN(fen);
-  printBoard();
+  // const char* fen = "r1/1K";  // top-left rook, bottom-right King
+  // parseFEN(fen);
+  // printBoard();
 
   delay(1000);
 }

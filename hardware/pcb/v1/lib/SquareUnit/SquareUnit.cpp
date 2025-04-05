@@ -30,6 +30,32 @@ void SquareUnit::readSensors() {
     }
 }
 
+char SquareUnit::detectPiece() {
+    if (_pieceType == PIECE_NONE) return ' ';
+  
+    // Simplified logic using hall + photo sensor values
+    // You can adjust these ranges based on real readings
+  
+    bool isWhite = (_photoValue > 600); // bright = white piece
+    int pieceID = map(_hallValue, 300, 900, 1, 6); // crude analog profile
+    pieceID = constrain(pieceID, 1, 6);
+  
+    char piece = ' ';
+  
+    switch (pieceID) {
+      case 1: piece = 'P'; break;
+      case 2: piece = 'N'; break;
+      case 3: piece = 'B'; break;
+      case 4: piece = 'R'; break;
+      case 5: piece = 'Q'; break;
+      case 6: piece = 'K'; break;
+    }
+  
+    if (!isWhite) piece = tolower(piece);
+    return piece;
+  }
+  
+
 void SquareUnit::printStatus() {
     Serial.print("unit:");
     Serial.print(_ledEnablePin);  // identify by enable pin

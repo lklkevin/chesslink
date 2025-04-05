@@ -21,6 +21,7 @@ public:
     int getPhotoValue() const;
     int getHallValue() const;
     PieceType getPieceType() const;
+    char detectPiece();
     bool isMagnetDetected() const { return _pieceType != PIECE_NONE; }
 
 private:
