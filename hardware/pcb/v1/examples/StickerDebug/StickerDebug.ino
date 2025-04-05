@@ -1,25 +1,13 @@
 #include <Arduino.h>
 #include "StickerReader.h"
-// #include "LEDUtils.h"
 
-const int PHOTO_PIN_A = A1;
-const int PHOTO_PIN_B = A2;
-const int PHOTO_PIN_C = A0;
-const int PHOTO_PIN_D = A3;
-
+const int PHOTO_PIN = A0;
 const int RED_PIN = 6;
 const int GREEN_PIN = 3;
 const int BLUE_PIN = 5;
 const int IR_PIN = 2;
 
-const int ON_LED_A = 10;
-const int ON_LED_B = 9; 
-const int ON_LED_C = 11;
-const int ON_LED_D = 12;
-
-// read only LED A for now
-StickerReader reader(PHOTO_PIN_A, ON_LED_A, 
-  RED_PIN, GREEN_PIN, BLUE_PIN, IR_PIN);
+StickerReader reader(PHOTO_PIN, RED_PIN, GREEN_PIN, BLUE_PIN, IR_PIN);
 
 void setup() {
   Serial.begin(9600);

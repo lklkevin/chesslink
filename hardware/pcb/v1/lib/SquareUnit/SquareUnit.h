@@ -17,6 +17,7 @@ public:
     void readSensors();
     void printStatus();
     void setColor(int r, int g, int b);
+    void turnOff();
 
     int getPhotoValue() const;
     int getHallValue() const;

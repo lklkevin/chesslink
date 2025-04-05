@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "SquareUnit.h"
-#include "SensorUtils.h"
+#include "LEDUtils.h"
 
 const int RED_PIN = 6;
 const int GREEN_PIN = 3;
@@ -17,7 +17,7 @@ void SquareUnit::begin() {
 }
 
 void SquareUnit::readSensors() {
-    _photoValue = readCleanSensor(_photoPin, 2);  // IR emitter is on pin 2 globally
+    _photoValue = readIRSensor(_photoPin, 2);  // IR emitter is on pin 2 globally
     _hallValue = analogRead(_hallPin);
     
     // Determine piece type based on hall sensor value
@@ -57,7 +57,7 @@ char SquareUnit::detectPiece() {
   
 
 void SquareUnit::printStatus() {
-    Serial.print("unit:");
+    Serial.print("unit: ");
     Serial.print(_ledEnablePin);  // identify by enable pin
     Serial.print(", photo:");
     Serial.print(_photoValue);
@@ -77,6 +77,10 @@ void SquareUnit::setColor(int r, int g, int b) {
     analogWrite(RED_PIN, r);
     analogWrite(GREEN_PIN, g);
     analogWrite(BLUE_PIN, b);
+}
+
+void SquareUnit::turnOff() {
+    digitalWrite(_ledEnablePin, LOW);  // Disable RGB LED
 }
 
 int SquareUnit::getPhotoValue() const { return _photoValue; }
