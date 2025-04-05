@@ -1,28 +1,37 @@
 #ifndef SQUARE_UNIT_H
 #define SQUARE_UNIT_H
 
+#include <Arduino.h>
+
+enum PieceType {
+    PIECE_NONE,
+    PIECE_WHITE,
+    PIECE_BLACK
+};
+
 class SquareUnit {
 public:
-    SquareUnit(int photoPin, int hallPin, int ledEnablePin, int hallThreshold = 500);
+    SquareUnit(int photoPin, int hallPin, int ledEnablePin, int hallLowThreshold = 300, int hallHighThreshold = 500);
 
     void begin();
     void readSensors();
-    void printStatus();   // Print debug info
+    void printStatus();
     void setColor(int r, int g, int b);
 
     int getPhotoValue() const;
     int getHallValue() const;
-    bool isMagnetDetected() const;
+    PieceType getPieceType() const;
+    bool isMagnetDetected() const { return _pieceType != PIECE_NONE; }
 
 private:
     int _photoPin;
     int _hallPin;
     int _ledEnablePin;
-    int _hallThreshold;
-
+    int _hallLowThreshold;
+    int _hallHighThreshold;
     int _photoValue;
     int _hallValue;
-    bool _magnetDetected;
+    PieceType _pieceType;
 };
 
 #endif

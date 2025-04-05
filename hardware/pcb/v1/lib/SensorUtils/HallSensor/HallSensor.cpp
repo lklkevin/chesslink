@@ -15,5 +15,5 @@ int HallSensor::readRaw() {
 }
 
 bool HallSensor::isMagnetDetected() {
-    return readRaw() < _threshold;
+    return readRaw() > _threshold;
 }

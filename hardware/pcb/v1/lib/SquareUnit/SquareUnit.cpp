@@ -6,8 +6,9 @@ const int RED_PIN = 6;
 const int GREEN_PIN = 3;
 const int BLUE_PIN = 5;
 
-SquareUnit::SquareUnit(int photoPin, int hallPin, int ledEnablePin, int hallThreshold)
-    : _photoPin(photoPin), _hallPin(hallPin), _ledEnablePin(ledEnablePin), _hallThreshold(hallThreshold) {}
+SquareUnit::SquareUnit(int photoPin, int hallPin, int ledEnablePin, int hallLowThreshold, int hallHighThreshold)
+    : _photoPin(photoPin), _hallPin(hallPin), _ledEnablePin(ledEnablePin), 
+      _hallLowThreshold(hallLowThreshold), _hallHighThreshold(hallHighThreshold), _pieceType(PIECE_NONE) {}
 
 void SquareUnit::begin() {
     pinMode(_ledEnablePin, OUTPUT);
@@ -18,7 +19,15 @@ void SquareUnit::begin() {
 void SquareUnit::readSensors() {
     _photoValue = readCleanSensor(_photoPin, 2);  // IR emitter is on pin 2 globally
     _hallValue = analogRead(_hallPin);
-    _magnetDetected = _hallValue < _hallThreshold;
+    
+    // Determine piece type based on hall sensor value
+    if (_hallValue > _hallHighThreshold) {
+        _pieceType = PIECE_WHITE;
+    } else if (_hallValue < _hallLowThreshold) {
+        _pieceType = PIECE_BLACK;
+    } else {
+        _pieceType = PIECE_NONE;
+    }
 }
 
 void SquareUnit::printStatus() {
@@ -28,8 +37,13 @@ void SquareUnit::printStatus() {
     Serial.print(_photoValue);
     Serial.print(", hall:");
     Serial.print(_hallValue);
-    Serial.print(", magnet:");
-    Serial.println(_magnetDetected);
+    Serial.print(", piece:");
+    
+    switch (_pieceType) {
+        case PIECE_WHITE: Serial.println("WHITE"); break;
+        case PIECE_BLACK: Serial.println("BLACK"); break;
+        default: Serial.println("NONE"); break;
+    }
 }
 
 void SquareUnit::setColor(int r, int g, int b) {
@@ -41,4 +55,4 @@ void SquareUnit::setColor(int r, int g, int b) {
 
 int SquareUnit::getPhotoValue() const { return _photoValue; }
 int SquareUnit::getHallValue() const { return _hallValue; }
-bool SquareUnit::isMagnetDetected() const { return _magnetDetected; }
+PieceType SquareUnit::getPieceType() const { return _pieceType; }
