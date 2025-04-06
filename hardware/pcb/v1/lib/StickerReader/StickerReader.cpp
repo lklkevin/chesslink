@@ -14,7 +14,7 @@ StickerSignature stickerDB[] = {
     {"Pink", {100, 19, 91}}, 
     {"Yellow", {141, 128, 27}},
     {"Purple", {23, 14, 68}},
-    {"Gray", {18, 22, 33}},
+    {"Gray", {40, 46, 76}},
     {"Green", {11, 53, 11}},
     {"Orange", {125, 39, 21}}
 };
