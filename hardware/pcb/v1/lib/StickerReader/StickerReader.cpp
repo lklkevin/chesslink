@@ -10,7 +10,7 @@ StickerSignature stickerDB[] = {
     {"Blue",  {5, 65, 110, 659}},
     {"Gold", {107, 126, 128, 758}},
     {"LightBlue", {31, 99, 165, 720}},
-    {"White", {103, 141, 236, 783}},
+    {"Brown", {21, 7, 9, 549}},
     {"Pink", {100, 19, 91, 796}}, 
     {"Silver", {82, 118, 188, 692}},
     {"Purple", {23, 14, 68, 742}},
@@ -27,7 +27,7 @@ FenMapping pieceMap[] = {
     {"Blue",  "Q"},
     {"Gold",  "q"},
     {"LightBlue", "r"},
-    {"White", "R"},
+    {"Brown", "R"},
     {"Pink", "B"},
     {"Silver", "N"},
     {"Purple", "b"},
@@ -79,14 +79,27 @@ void StickerReader::readSignature(int* out) {
     }
 }
 
+// Calculate the distance between two color signatures
+// using a weighted Euclidean distance formula
+// This is a simple approximation and can be adjusted
+// based on the specific characteristics of the colors
+// and the sensor used.
+// The weights are chosen based on the sensitivity of the sensor
+// to different colors. We may need to calibrate these
+// weights based on your specific setup and the colors
+// we are using.
 int StickerReader::distance(int* a, int* b) {
-    long sum = 0;
-    for (int i = 0; i < 4; i++) {
-        long d = (long)a[i] - (long)b[i];
-        sum += d * d;
-    }
-    return (int)sqrt(sum);
+    float sum = 0;
+    float rWeight = 1.4, gWeight = 1.6, bWeight = 1.8, irWeight = 0.5;
+
+    sum += rWeight * sq((float)(a[0] - b[0]));
+    sum += gWeight * sq((float)(a[1] - b[1]));
+    sum += bWeight * sq((float)(a[2] - b[2]));
+    sum += irWeight * sq((float)(a[3] - b[3]));
+
+    return sqrt(sum);
 }
+
 
 const char* StickerReader::getFENFromLabel(const char* label) {
     for (int i = 0; i < sizeof(pieceMap) / sizeof(FenMapping); i++) {
