@@ -39,7 +39,6 @@ void loop() {
   Serial.print("R: "); Serial.print(signature[0]);
   Serial.print(", G: "); Serial.print(signature[1]);
   Serial.print(", B: "); Serial.print(signature[2]);
-  Serial.print(", IR: "); Serial.print(signature[3]);
 
   const char* label = reader.identifySticker();
   const char* fen = reader.getFENFromLabel(label);
@@ -57,6 +56,13 @@ void loop() {
     case PIECE_BLACK: Serial.println("BLACK"); break;
     default: Serial.println("NONE"); break;
     }
+  
+    
+  Serial.print("IR Value: ");
+  Serial.println(reader.getIRValue());
+  Serial.print("Is Piece Present: ");
+  Serial.println(reader.isPiecePresent() ? "YES" : "NO");
+  Serial.println("=====================================");
 
   delay(1000);
 }

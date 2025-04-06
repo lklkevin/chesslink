@@ -4,19 +4,19 @@
 
 // Example sticker database (calibrated manually later)
 StickerSignature stickerDB[] = {
-    {"Empty",   {0, 0, 0, 478}},
-    {"Red",   {72, 5, 9, 716}},
-    {"Green", {2, 41, 10, 673}},
-    {"Blue",  {5, 65, 110, 659}},
-    {"Gold", {107, 126, 128, 758}},
-    {"LightBlue", {31, 99, 165, 720}},
-    {"Brown", {21, 7, 9, 549}},
-    {"Pink", {100, 19, 91, 796}}, 
-    {"Silver", {82, 118, 188, 692}},
-    {"Purple", {23, 14, 68, 742}},
-    {"Gray", {18, 22, 33, 547}},
-    {"LightGreen", {11, 53, 11, 655}},
-    {"Black", {3, 4, 7, 494}}
+    {"Empty",   {0, 0, 0}},
+    {"Red",   {72, 5, 9}},
+    {"LightGreen", {2, 41, 10}},
+    {"Blue",  {5, 65, 110}},
+    {"Gold", {107, 126, 128}},
+    {"LightBlue", {31, 99, 165}},
+    {"Brown", {21, 7, 9}},
+    {"Pink", {100, 19, 91}}, 
+    {"Silver", {82, 118, 188}},
+    {"Purple", {23, 14, 68}},
+    {"Gray", {18, 22, 33}},
+    {"Green", {11, 53, 11}},
+    {"Black", {3, 4, 7}}
 };
 
 // FEN mapping. White is uppercase, black is lowercase PNBRQK
@@ -65,7 +65,7 @@ void StickerReader::readSignature(int* out) {
     out[0] = readLEDSensors(_sensorPin, _ledPin, 0, 255, 255);   // R
     out[1] = readLEDSensors(_sensorPin, _ledPin, 255, 0, 255); // G
     out[2] = readLEDSensors(_sensorPin, _ledPin, 255, 255, 0);  // B
-    out[3] = readIRSensor(_sensorPin, _irPin);    // IR
+    _irValue = readIRSensor(_sensorPin, _irPin);    // IR
 
     _hallValue = analogRead(_hallPin);
     
@@ -89,16 +89,15 @@ void StickerReader::readSignature(int* out) {
 // weights based on your specific setup and the colors
 // we are using.
 int StickerReader::distance(int* a, int* b) {
+    float weights[3] = {1.0, 1.0, 1.0}; // weights if needed for R, G, B
     float sum = 0;
-    float rWeight = 1.4, gWeight = 1.6, bWeight = 1.8, irWeight = 0.5;
-
-    sum += rWeight * sq((float)(a[0] - b[0]));
-    sum += gWeight * sq((float)(a[1] - b[1]));
-    sum += bWeight * sq((float)(a[2] - b[2]));
-    sum += irWeight * sq((float)(a[3] - b[3]));
-
+    for (int i = 0; i < 3; i++) {
+        float d = a[i] - b[i];
+        sum += weights[i] * d * d;
+    }
     return sqrt(sum);
 }
+
 
 
 const char* StickerReader::getFENFromLabel(const char* label) {
@@ -109,7 +108,12 @@ const char* StickerReader::getFENFromLabel(const char* label) {
     }
     return "?";
   }
-  
+
+bool StickerReader::isPiecePresent() {
+// int irValue = readIRSensor(_sensorPin, _irPin);
+return _irValue > 600; // You can calibrate this
+}
+
 const char* StickerReader::identifySticker() {
     int sig[4];
     readSignature(sig);
@@ -128,5 +132,6 @@ const char* StickerReader::identifySticker() {
     return closestLabel;
 }
 
+int StickerReader::getIRValue() const { return _irValue; }
 int StickerReader::getHallValue() const { return _hallValue; }
 PieceType StickerReader::getPieceType() const { return _pieceType; }

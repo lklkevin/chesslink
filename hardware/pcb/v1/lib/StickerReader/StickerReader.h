@@ -29,6 +29,8 @@ public:
     int getHallValue() const;
     PieceType getPieceType() const;
     const char* getFENFromLabel(const char* label);
+    bool isPiecePresent();
+    int getIRValue() const;
 
 private:
     int _sensorPin;
@@ -39,6 +41,7 @@ private:
     int _hallLowThreshold;
     int _hallHighThreshold;
     int _hallValue;
+    int _irValue;
     PieceType _pieceType;
 
     int distance(int* a, int* b);
