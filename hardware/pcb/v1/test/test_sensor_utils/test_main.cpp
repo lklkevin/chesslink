@@ -1,9 +1,9 @@
 #include <Arduino.h>
 #include <unity.h>
-#include <SensorUtils.h>
+#include <LEDUtils.h>
 
 void test_sensor_logic() {
-  int result = readCleanSensor(A0, 2); // Real sensor call (if testing on device)
+  int result = readIRSensor(A0, 2); // Real sensor call (if testing on device)
   TEST_ASSERT(result >= 0);
 }
 
