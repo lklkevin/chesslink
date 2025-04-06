@@ -5,7 +5,7 @@
 // Example sticker database (calibrated manually later)
 StickerSignature stickerDB[] = {
     {"Empty",   {0, 0, 0}},
-    {"Red",   {72, 5, 9}},
+    {"Red",   {130, 11, 18}},
     {"LightGreen", {2, 41, 10}},
     {"Blue",  {5, 65, 110}},
     {"Gold", {107, 126, 128}},
@@ -18,6 +18,7 @@ StickerSignature stickerDB[] = {
     {"Green", {11, 53, 11}},
     {"Orange", {125, 39, 21}}
 };
+
 
 // FEN mapping. White is uppercase, black is lowercase PNBRQK
 FenMapping pieceMap[] = {
