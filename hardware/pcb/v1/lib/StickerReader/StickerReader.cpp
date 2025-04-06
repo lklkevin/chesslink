@@ -4,12 +4,38 @@
 
 // Example sticker database (calibrated manually later)
 StickerSignature stickerDB[] = {
-    {"Red",   {850, 200, 150, 300}},
-    {"Green", {200, 800, 150, 290}},
-    {"Blue",  {200, 190, 850, 320}},
-    {"White", {900, 900, 900, 900}},
-    {"Black", {100, 100, 100, 150}}
+    {"Empty",   {0, 0, 0, 478}},
+    {"Red",   {72, 5, 9, 716}},
+    {"Green", {2, 41, 10, 673}},
+    {"Blue",  {5, 65, 110, 659}},
+    {"Gold", {107, 126, 128, 758}},
+    {"LightBlue", {31, 99, 165, 720}},
+    {"White", {103, 141, 236, 783}},
+    {"Pink", {100, 19, 91, 796}}, 
+    {"Silver", {82, 118, 188, 692}},
+    {"Purple", {23, 14, 68, 742}},
+    {"Gray", {18, 22, 33, 547}},
+    {"LightGreen", {11, 53, 11, 655}},
+    {"Black", {3, 4, 7, 494}}
 };
+
+// FEN mapping. White is uppercase, black is lowercase PNBRQK
+FenMapping pieceMap[] = {
+    {"Empty", "-"},
+    {"Red",   "p"},
+    {"Green", "P"},
+    {"Blue",  "Q"},
+    {"Gold",  "q"},
+    {"LightBlue", "r"},
+    {"White", "R"},
+    {"Pink", "B"},
+    {"Silver", "N"},
+    {"Purple", "b"},
+    {"Gray", "n"},
+    {"LightGreen", "K"},
+    {"Black", "k"},
+};
+
 const int STICKER_DB_SIZE = sizeof(stickerDB) / sizeof(StickerSignature);
 
 StickerReader::StickerReader(int sensorPin, int ledPin, int redPin, int greenPin, int bluePin, int irPin)
@@ -40,12 +66,21 @@ int StickerReader::distance(int* a, int* b) {
     return (int)sqrt(sum);
 }
 
+const char* StickerReader::getFENFromLabel(const char* label) {
+    for (int i = 0; i < sizeof(pieceMap) / sizeof(FenMapping); i++) {
+      if (strcmp(label, pieceMap[i].label) == 0) {
+        return pieceMap[i].piece;
+      }
+    }
+    return "?";
+  }
+  
 const char* StickerReader::identifySticker() {
     int sig[4];
     readSignature(sig);
 
-    const char* closestLabel = "Unknown";
-    int minDist = 100000;
+    const char* closestLabel = "Processing";
+    int minDist = 1000000;
 
     for (int i = 0; i < STICKER_DB_SIZE; i++) {
         int d = distance(sig, stickerDB[i].values);

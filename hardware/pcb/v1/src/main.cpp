@@ -35,8 +35,13 @@ void loop() {
   Serial.print(", G: "); Serial.print(signature[1]);
   Serial.print(", B: "); Serial.print(signature[2]);
   Serial.print(", IR: "); Serial.print(signature[3]);
+
+  const char* label = reader.identifySticker();
+  const char* fen = reader.getFENFromLabel(label);
   Serial.print(" => Detected: ");
-  Serial.println(reader.identifySticker());
+  Serial.print(label);
+  Serial.print(" | FEN: ");
+  Serial.println(fen);
 
   delay(1000);
 }

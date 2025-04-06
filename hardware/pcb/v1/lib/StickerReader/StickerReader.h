@@ -6,6 +6,11 @@ struct StickerSignature {
     int values[4]; // [Red, Green, Blue, IR]
 };
 
+struct FenMapping {
+    const char* label;
+    const char* piece; // [Red, Green, Blue, IR]
+};
+
 class StickerReader {
 public:
     StickerReader(int sensorPin, int ledPin,
@@ -14,6 +19,7 @@ public:
     void begin();
     void readSignature(int* out);
     const char* identifySticker();
+    const char* getFENFromLabel(const char* label);
 
 private:
     int _sensorPin;
