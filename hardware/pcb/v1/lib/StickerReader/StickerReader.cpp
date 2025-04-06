@@ -12,11 +12,11 @@ StickerSignature stickerDB[] = {
     {"LightBlue", {31, 99, 165}},
     {"Brown", {21, 7, 9}},
     {"Pink", {100, 19, 91}}, 
-    {"Silver", {82, 118, 188}},
+    {"Yellow", {141, 128, 27}},
     {"Purple", {23, 14, 68}},
     {"Gray", {18, 22, 33}},
     {"Green", {11, 53, 11}},
-    {"Black", {3, 4, 7}}
+    {"Orange", {125, 39, 21}}
 };
 
 // FEN mapping. White is uppercase, black is lowercase PNBRQK
@@ -29,11 +29,11 @@ FenMapping pieceMap[] = {
     {"LightBlue", "r"},
     {"Brown", "R"},
     {"Pink", "B"},
-    {"Silver", "N"},
+    {"Yellow", "N"},
     {"Purple", "b"},
     {"Gray", "n"},
     {"LightGreen", "K"},
-    {"Black", "k"},
+    {"Orange", "k"},
 };
 
 const int STICKER_DB_SIZE = sizeof(stickerDB) / sizeof(StickerSignature);
