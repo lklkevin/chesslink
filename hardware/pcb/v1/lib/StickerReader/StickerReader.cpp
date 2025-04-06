@@ -98,8 +98,6 @@ int StickerReader::distance(int* a, int* b) {
     return sqrt(sum);
 }
 
-
-
 const char* StickerReader::getFENFromLabel(const char* label) {
     for (int i = 0; i < sizeof(pieceMap) / sizeof(FenMapping); i++) {
       if (strcmp(label, pieceMap[i].label) == 0) {
@@ -135,3 +133,75 @@ const char* StickerReader::identifySticker() {
 int StickerReader::getIRValue() const { return _irValue; }
 int StickerReader::getHallValue() const { return _hallValue; }
 PieceType StickerReader::getPieceType() const { return _pieceType; }
+
+// Static method to read multiple readers at once
+void StickerReader::readAllSignatures(int numReaders, StickerReader* readers, int** outSignatures) {
+    // Collect arrays of pins
+    int* photoPins = new int[numReaders];
+    int* ledPins = new int[numReaders];
+    int* rResults = new int[numReaders];
+    int* gResults = new int[numReaders];
+    int* bResults = new int[numReaders];
+    int* irResults = new int[numReaders];
+
+    // Fill pin arrays
+    for (int i = 0; i < numReaders; i++) {
+        photoPins[i] = readers[i]._sensorPin;
+        ledPins[i] = readers[i]._ledPin;
+    }
+    
+    // Get R values for all readers at once
+    readAllSensors(numReaders, photoPins, ledPins, rResults, 0, 255, 255);
+    
+    // Get G values for all readers at once
+    readAllSensors(numReaders, photoPins, ledPins, gResults, 255, 0, 255);
+    
+    // Get B values for all readers at once
+    readAllSensors(numReaders, photoPins, ledPins, bResults, 255, 255, 0);
+    
+    // Get IR values for all readers at once
+    readAllIRSensors(numReaders, photoPins, readers[0]._irPin, irResults);
+    
+
+    // Save results
+    for (int i = 0; i < numReaders; i++) {
+        outSignatures[i][0] = rResults[i];
+        outSignatures[i][1] = gResults[i];
+        outSignatures[i][2] = bResults[i];
+        readers[i]._irValue = irResults[i];
+        
+        // Read hall sensor and determine piece type
+        readers[i]._hallValue = analogRead(readers[i]._hallPin);
+        
+        if (readers[i]._hallValue > readers[i]._hallHighThreshold) {
+            readers[i]._pieceType = PIECE_WHITE;
+        } else if (readers[i]._hallValue < readers[i]._hallLowThreshold) {
+            readers[i]._pieceType = PIECE_BLACK;
+        } else {
+            readers[i]._pieceType = PIECE_NONE;
+        }
+    }
+    
+    // Clean up
+    delete[] photoPins;
+    delete[] ledPins;
+    delete[] rResults;
+    delete[] gResults;
+    delete[] bResults;
+    delete[] irResults;
+}
+
+// Get combined FEN string from multiple readers
+String StickerReader::getCombinedFEN(int numReaders, StickerReader* readers) {
+    String result = "";
+
+    Serial.println("Getting combined FEN...");
+    
+    for (int i = 0; i < numReaders; i++) {
+        const char* label = readers[i].identifySticker();
+        const char* fenChar = readers[i].getFENFromLabel(label);
+        result += fenChar;
+    }
+    
+    return result;
+}

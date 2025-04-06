@@ -32,6 +32,10 @@ public:
     bool isPiecePresent();
     int getIRValue() const;
 
+    // New static methods for batch operations
+    static void readAllSignatures(int numReaders, StickerReader* readers, int** outSignatures);
+    static String getCombinedFEN(int numReaders, StickerReader* readers);
+
 private:
     int _sensorPin;
     int _redPin, _greenPin, _bluePin, _irPin;
