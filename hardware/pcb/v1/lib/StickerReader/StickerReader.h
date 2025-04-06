@@ -11,20 +11,35 @@ struct FenMapping {
     const char* piece; // [Red, Green, Blue, IR]
 };
 
+enum PieceType {
+    PIECE_NONE,
+    PIECE_WHITE,
+    PIECE_BLACK
+};
+
 class StickerReader {
 public:
     StickerReader(int sensorPin, int ledPin,
-                int redPin, int greenPin, int bluePin, int irPin);
+                int redPin, int greenPin, int bluePin, int irPin, int hallPin,
+                int hallLowThreshold = 300, int hallHighThreshold = 500);
 
     void begin();
     void readSignature(int* out);
     const char* identifySticker();
+    int getHallValue() const;
+    PieceType getPieceType() const;
     const char* getFENFromLabel(const char* label);
 
 private:
     int _sensorPin;
     int _redPin, _greenPin, _bluePin, _irPin;
     int _ledPin;
+    int _photoPin;
+    int _hallPin;
+    int _hallLowThreshold;
+    int _hallHighThreshold;
+    int _hallValue;
+    PieceType _pieceType;
 
     int distance(int* a, int* b);
 };

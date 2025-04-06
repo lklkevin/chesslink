@@ -38,9 +38,20 @@ FenMapping pieceMap[] = {
 
 const int STICKER_DB_SIZE = sizeof(stickerDB) / sizeof(StickerSignature);
 
-StickerReader::StickerReader(int sensorPin, int ledPin, int redPin, int greenPin, int bluePin, int irPin)
-    : _sensorPin(sensorPin), _ledPin(ledPin), 
-    _redPin(redPin), _greenPin(greenPin), _bluePin(bluePin), _irPin(irPin) {}
+StickerReader::StickerReader(int sensorPin, int ledPin, 
+                            int redPin, int greenPin, 
+                            int bluePin, int irPin,
+                            int hallPin, int hallLowThreshold,
+                            int hallHighThreshold)
+    : _sensorPin(sensorPin), 
+    _ledPin(ledPin), 
+    _redPin(redPin), 
+    _greenPin(greenPin), 
+    _bluePin(bluePin), 
+    _irPin(irPin), 
+    _hallHighThreshold(hallHighThreshold), 
+    _hallLowThreshold(hallLowThreshold), 
+    _hallPin(hallPin) {}
 
 void StickerReader::begin() {
     pinMode(_redPin, OUTPUT);
@@ -55,6 +66,17 @@ void StickerReader::readSignature(int* out) {
     out[1] = readLEDSensors(_sensorPin, _ledPin, 255, 0, 255); // G
     out[2] = readLEDSensors(_sensorPin, _ledPin, 255, 255, 0);  // B
     out[3] = readIRSensor(_sensorPin, _irPin);    // IR
+
+    _hallValue = analogRead(_hallPin);
+    
+    // Determine piece type based on hall sensor value
+    if (_hallValue > _hallHighThreshold) {
+        _pieceType = PIECE_WHITE;
+    } else if (_hallValue < _hallLowThreshold) {
+        _pieceType = PIECE_BLACK;
+    } else {
+        _pieceType = PIECE_NONE;
+    }
 }
 
 int StickerReader::distance(int* a, int* b) {
@@ -92,3 +114,6 @@ const char* StickerReader::identifySticker() {
 
     return closestLabel;
 }
+
+int StickerReader::getHallValue() const { return _hallValue; }
+PieceType StickerReader::getPieceType() const { return _pieceType; }
