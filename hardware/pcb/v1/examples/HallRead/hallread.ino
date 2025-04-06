@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#define HALL_SENSOR_PIN A4  // Analog input pin
+#define HALL_SENSOR_PIN A4  // Analog input pin, A4, A5, A6, or A7
 #define THRESHOLD 500       // Adjust based on your sensor’s baseline
 
 void setup() {
