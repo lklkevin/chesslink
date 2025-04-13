@@ -112,22 +112,23 @@ int StickerReader::readAmbient() {
 }
 
 // Check if ambient light has changed beyond threshold
-bool StickerReader::hasAmbientChanged(int threshold) {
+// Return values: 0 = no significant change, 1 = piece placed, -1 = piece removed
+int StickerReader::checkAmbientChange(int threshold) {
     int currentAmbient = readAmbientLight(_sensorPin);
-    int diff = abs(currentAmbient - _lastAmbient);
+    int diff = currentAmbient - _lastAmbient;
     
-    // Serial.print("Ambient light diff: ");
-    // Serial.print(diff);
-    // Serial.print(" Current ambient: ");
-    // Serial.print(currentAmbient);
-    // Serial.print(" Last ambient: ");
-    // Serial.println(_lastAmbient);
-
-    // set the correct changes
+    // Update the last ambient light reading regardless of change detection
     _lastAmbient = currentAmbient;
     _lastAmbientTime = millis();
 
-    return diff > threshold;
+    // Return 1 if light increased (piece placed), -1 if decreased (piece removed), 0 if no significant change
+    if (diff > threshold) {
+        return -1;  // Piece removed (light increased)
+    } else if (diff < -threshold) {
+        return 1; // Piece added (light decreased)
+    } else {
+        return 0;  // No significant change
+    }
 }
 
 // Calculate the distance between two color signatures

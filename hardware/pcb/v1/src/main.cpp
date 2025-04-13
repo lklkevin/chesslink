@@ -66,47 +66,79 @@ void setup() {
 }
 
 void loop() {
-  // Variables to track which sensors have changed
-  bool changedA = readerA.hasAmbientChanged();
-  bool changedB = readerB.hasAmbientChanged();
-  bool changedC = readerC.hasAmbientChanged();
-  bool changedD = readerD.hasAmbientChanged();
+  // Variables to track how sensors have changed
+  int changeA = readerA.checkAmbientChange();
+  int changeB = readerB.checkAmbientChange();
+  int changeC = readerC.checkAmbientChange();
+  int changeD = readerD.checkAmbientChange();
   
-  bool ambientChanged = changedA || changedB || changedC || changedD;
+  bool pieceChangedA = changeA != 0;
+  bool pieceChangedB = changeB != 0;
+  bool pieceChangedC = changeC != 0;
+  bool pieceChangedD = changeD != 0;
+  
+  bool anyPieceChanged = pieceChangedA || pieceChangedB || pieceChangedC || pieceChangedD;
   
   // Static variables to store previous readings across loop calls
   static int signatureA[4] = {0}, signatureB[4] = {0}, signatureC[4] = {0}, signatureD[4] = {0};
   static const char* labelA = "Empty", *labelB = "Empty", *labelC = "Empty", *labelD = "Empty";
   
-  if (ambientChanged) {
-    Serial.println("Ambient light changed, checking changed pieces...");
+  if (anyPieceChanged) {
+    delay(500); // Debounce delay and allow piece to land
+
+    Serial.println("Piece change detected, updating board state...");
     
-    // Only read signatures for squares that have changed
-    if (changedA) {
-      readerA.readSignature(signatureA);
-      labelA = readerA.identifySticker();
-      Serial.println("Square A changed!");
+    // Handle square A
+    if (pieceChangedA) {
+      if (changeA > 0) {
+        // Piece placed - do full reading
+        readerA.readSignature(signatureA);
+        labelA = readerA.identifySticker();
+        Serial.println("Square A: Piece placed");
+      } else {
+        // Piece removed - mark as empty without LED flash
+        labelA = "Empty";
+        Serial.println("Square A: Piece removed");
+      }
     }
     
-    if (changedB) {
-      readerB.readSignature(signatureB);
-      labelB = readerB.identifySticker();
-      Serial.println("Square B changed!");
+    // Handle square B
+    if (pieceChangedB) {
+      if (changeB > 0) {
+        readerB.readSignature(signatureB);
+        labelB = readerB.identifySticker();
+        Serial.println("Square B: Piece placed");
+      } else {
+        labelB = "Empty";
+        Serial.println("Square B: Piece removed");
+      }
     }
     
-    if (changedC) {
-      readerC.readSignature(signatureC);
-      labelC = readerC.identifySticker();
-      Serial.println("Square C changed!");
+    // Handle square C
+    if (pieceChangedC) {
+      if (changeC > 0) {
+        readerC.readSignature(signatureC);
+        labelC = readerC.identifySticker();
+        Serial.println("Square C: Piece placed");
+      } else {
+        labelC = "Empty";
+        Serial.println("Square C: Piece removed");
+      }
     }
     
-    if (changedD) {
-      readerD.readSignature(signatureD);
-      labelD = readerD.identifySticker();
-      Serial.println("Square D changed!");
+    // Handle square D
+    if (pieceChangedD) {
+      if (changeD > 0) {
+        readerD.readSignature(signatureD);
+        labelD = readerD.identifySticker();
+        Serial.println("Square D: Piece placed");
+      } else {
+        labelD = "Empty";
+        Serial.println("Square D: Piece removed");
+      }
     }
     
-    // Get FEN characters for each square (using cached values for unchanged squares)
+    // Get FEN characters for each square
     const char* fenA = readerA.getFENFromLabel(labelA);
     const char* fenB = readerB.getFENFromLabel(labelB);
     const char* fenC = readerC.getFENFromLabel(labelC);
@@ -119,24 +151,25 @@ void loop() {
     Serial.print(fenC);
     Serial.println(fenD);
     
-    // Print detailed information only for changed squares
-    if (changedA) {
-      Serial.println("Square A:");
+    // Print detailed information only for changed squares that had pieces placed
+    // No need to do full info print for removed pieces
+    if (changeA > 0) {
+      Serial.println("Square A details:");
       printSquareInfo(readerA, signatureA, labelA);
     }
     
-    if (changedB) {
-      Serial.println("Square B:");
+    if (changeB > 0) {
+      Serial.println("Square B details:");
       printSquareInfo(readerB, signatureB, labelB);
     }
     
-    if (changedC) {
-      Serial.println("Square C:");
+    if (changeC > 0) {
+      Serial.println("Square C details:");
       printSquareInfo(readerC, signatureC, labelC);
     }
     
-    if (changedD) {
-      Serial.println("Square D:");
+    if (changeD > 0) {
+      Serial.println("Square D details:");
       printSquareInfo(readerD, signatureD, labelD);
     }
     
