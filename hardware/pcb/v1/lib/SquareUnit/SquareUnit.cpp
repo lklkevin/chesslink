@@ -2,9 +2,9 @@
 #include "SquareUnit.h"
 #include "LEDUtils.h"
 
-const int RED_PIN = 6;
-const int GREEN_PIN = 3;
-const int BLUE_PIN = 5;
+const int RED_PIN_IO = 6;
+const int GREEN_PIN_IO = 3;
+const int BLUE_PIN_IO = 5;
 
 SquareUnit::SquareUnit(int photoPin, int hallPin, int ledEnablePin, int hallLowThreshold, int hallHighThreshold)
     : _photoPin(photoPin), _hallPin(hallPin), _ledEnablePin(ledEnablePin), 
@@ -74,9 +74,9 @@ void SquareUnit::printStatus() {
 
 void SquareUnit::setColor(int r, int g, int b) {
     digitalWrite(_ledEnablePin, HIGH);  // Turn on RGB
-    analogWrite(RED_PIN, r);
-    analogWrite(GREEN_PIN, g);
-    analogWrite(BLUE_PIN, b);
+    analogWrite(RED_PIN_IO, r);
+    analogWrite(GREEN_PIN_IO, g);
+    analogWrite(BLUE_PIN_IO, b);
 }
 
 void SquareUnit::turnOff() {
