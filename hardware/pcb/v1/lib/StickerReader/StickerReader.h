@@ -31,6 +31,10 @@ public:
     const char* getFENFromLabel(const char* label);
     bool isPiecePresent();
     int getIRValue() const;
+    
+    // New methods for ambient light detection
+    int readAmbient();
+    bool hasAmbientChanged(int threshold = 30);
 
 private:
     int _sensorPin;
@@ -43,6 +47,8 @@ private:
     int _hallValue;
     int _irValue;
     PieceType _pieceType;
+    int _lastAmbient; // To track previous ambient reading
+    unsigned long _lastAmbientTime; // To track when we last measured ambient
 
     int distance(int* a, int* b);
 };

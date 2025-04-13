@@ -7,5 +7,6 @@ const int BLUE_PIN = 5;
 
 int readLEDSensors(int pin, int emitterPin, int r, int g, int b);
 int readIRSensor(int pin, int emitterPin);
+int readAmbientLight(int photoDiodePin); // New function to read ambient light
 
 #endif

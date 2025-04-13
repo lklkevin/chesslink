@@ -72,3 +72,24 @@ int readIRSensor(int pin, int emitterPin) {
 
   return max(0, signal);
 }
+
+int readAmbientLight(int photoDiodePin) {
+  // Make sure all LEDs are off
+  analogWrite(RED_PIN, 255);
+  analogWrite(GREEN_PIN, 255);
+  analogWrite(BLUE_PIN, 255);
+  
+  long total = 0;
+  int numReadings = 10;  // You can adjust this based on how stable you need the reading
+
+  // Take 'numReadings' readings and accumulate the results
+  for (int i = 0; i < numReadings; i++) {
+    total += analogRead(photoDiodePin);
+    delayMicroseconds(1000);  // Small delay between readings to allow sensor settling
+  }
+
+  // Calculate the average of the readings
+  int ambient = total / numReadings;
+
+  return ambient;
+}

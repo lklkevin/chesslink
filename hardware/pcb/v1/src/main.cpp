@@ -66,47 +66,83 @@ void setup() {
 }
 
 void loop() {
-  // Arrays to store signatures for each reader
-  int signatureA[4], signatureB[4], signatureC[4], signatureD[4];
+  // Variables to track which sensors have changed
+  bool changedA = readerA.hasAmbientChanged();
+  bool changedB = readerB.hasAmbientChanged();
+  bool changedC = readerC.hasAmbientChanged();
+  bool changedD = readerD.hasAmbientChanged();
   
-  // Read signatures for all squares
-  readerA.readSignature(signatureA);
-  readerB.readSignature(signatureB);
-  readerC.readSignature(signatureC);
-  readerD.readSignature(signatureD);
+  bool ambientChanged = changedA || changedB || changedC || changedD;
   
-  // Identify stickers for all squares
-  const char* labelA = readerA.identifySticker();
-  const char* labelB = readerB.identifySticker();
-  const char* labelC = readerC.identifySticker();
-  const char* labelD = readerD.identifySticker();
+  // Static variables to store previous readings across loop calls
+  static int signatureA[4] = {0}, signatureB[4] = {0}, signatureC[4] = {0}, signatureD[4] = {0};
+  static const char* labelA = "Empty", *labelB = "Empty", *labelC = "Empty", *labelD = "Empty";
   
-  // Get FEN characters for each square
-  const char* fenA = readerA.getFENFromLabel(labelA);
-  const char* fenB = readerB.getFENFromLabel(labelB);
-  const char* fenC = readerC.getFENFromLabel(labelC);
-  const char* fenD = readerD.getFENFromLabel(labelD);
-  
-  // Print combined FEN
-  Serial.print("Combined FEN: ");
-  Serial.print(fenA);
-  Serial.print(fenB);
-  Serial.print(fenC);
-  Serial.println(fenD);
-  
-  // Print detailed information for debugging
-  Serial.println("Square A:");
-  printSquareInfo(readerA, signatureA, labelA);
-  
-  Serial.println("Square B:");
-  printSquareInfo(readerB, signatureB, labelB);
-  
-  Serial.println("Square C:");
-  printSquareInfo(readerC, signatureC, labelC);
-  
-  Serial.println("Square D:");
-  printSquareInfo(readerD, signatureD, labelD);
-  
-  Serial.println("=====================================");
-  delay(1000);
+  if (ambientChanged) {
+    Serial.println("Ambient light changed, checking changed pieces...");
+    
+    // Only read signatures for squares that have changed
+    if (changedA) {
+      readerA.readSignature(signatureA);
+      labelA = readerA.identifySticker();
+      Serial.println("Square A changed!");
+    }
+    
+    if (changedB) {
+      readerB.readSignature(signatureB);
+      labelB = readerB.identifySticker();
+      Serial.println("Square B changed!");
+    }
+    
+    if (changedC) {
+      readerC.readSignature(signatureC);
+      labelC = readerC.identifySticker();
+      Serial.println("Square C changed!");
+    }
+    
+    if (changedD) {
+      readerD.readSignature(signatureD);
+      labelD = readerD.identifySticker();
+      Serial.println("Square D changed!");
+    }
+    
+    // Get FEN characters for each square (using cached values for unchanged squares)
+    const char* fenA = readerA.getFENFromLabel(labelA);
+    const char* fenB = readerB.getFENFromLabel(labelB);
+    const char* fenC = readerC.getFENFromLabel(labelC);
+    const char* fenD = readerD.getFENFromLabel(labelD);
+    
+    // Print combined FEN
+    Serial.print("Combined FEN: ");
+    Serial.print(fenA);
+    Serial.print(fenB);
+    Serial.print(fenC);
+    Serial.println(fenD);
+    
+    // Print detailed information only for changed squares
+    if (changedA) {
+      Serial.println("Square A:");
+      printSquareInfo(readerA, signatureA, labelA);
+    }
+    
+    if (changedB) {
+      Serial.println("Square B:");
+      printSquareInfo(readerB, signatureB, labelB);
+    }
+    
+    if (changedC) {
+      Serial.println("Square C:");
+      printSquareInfo(readerC, signatureC, labelC);
+    }
+    
+    if (changedD) {
+      Serial.println("Square D:");
+      printSquareInfo(readerD, signatureD, labelD);
+    }
+    
+    Serial.println("=====================================");
+  } else {
+    // If no change, just do a quick check every 200ms
+    delay(200);
+  }
 }

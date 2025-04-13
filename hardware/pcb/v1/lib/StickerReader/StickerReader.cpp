@@ -52,7 +52,9 @@ StickerReader::StickerReader(int sensorPin, int ledPin,
     _irPin(irPin), 
     _hallHighThreshold(hallHighThreshold), 
     _hallLowThreshold(hallLowThreshold), 
-    _hallPin(hallPin) {}
+    _hallPin(hallPin),
+    _lastAmbient(0),
+    _lastAmbientTime(0) {}
 
 void StickerReader::begin() {
     pinMode(_redPin, OUTPUT);
@@ -60,6 +62,10 @@ void StickerReader::begin() {
     pinMode(_bluePin, OUTPUT);
     pinMode(_irPin, OUTPUT);
     pinMode(_ledPin, OUTPUT);
+    
+    // Initialize ambient light reading
+    _lastAmbient = readAmbient();
+    _lastAmbientTime = millis();
 }
 
 void StickerReader::readSignature(int* out) {
@@ -78,6 +84,33 @@ void StickerReader::readSignature(int* out) {
     } else {
         _pieceType = PIECE_NONE;
     }
+}
+
+// Read current ambient light level
+int StickerReader::readAmbient() {
+    int ambient = readAmbientLight(_sensorPin);
+    _lastAmbient = ambient;
+    _lastAmbientTime = millis();
+    return ambient;
+}
+
+// Check if ambient light has changed beyond threshold
+bool StickerReader::hasAmbientChanged(int threshold) {
+    int currentAmbient = readAmbientLight(_sensorPin);
+    int diff = abs(currentAmbient - _lastAmbient);
+    
+    // Serial.print("Ambient light diff: ");
+    // Serial.print(diff);
+    // Serial.print(" Current ambient: ");
+    // Serial.print(currentAmbient);
+    // Serial.print(" Last ambient: ");
+    // Serial.println(_lastAmbient);
+
+    // set the correct changes
+    _lastAmbient = currentAmbient;
+    _lastAmbientTime = millis();
+
+    return diff > threshold;
 }
 
 // Calculate the distance between two color signatures
