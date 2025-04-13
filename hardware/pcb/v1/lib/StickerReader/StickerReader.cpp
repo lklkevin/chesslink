@@ -3,7 +3,7 @@
 #include "LEDUtils.h"
 
 // Example sticker database (calibrated manually later)
-StickerSignature stickerDB[] = {
+StickerSignature stickerDB_1kohm_1mm_1kohm[] = {
     {"Empty",   {0, 0, 0}},
     {"Red",   {130, 11, 18}},
     {"LightGreen", {2, 41, 10}},
@@ -17,6 +17,23 @@ StickerSignature stickerDB[] = {
     {"Gray", {40, 46, 76}},
     {"Green", {11, 53, 11}},
     {"Orange", {125, 39, 21}}
+};
+
+// Example sticker database (calibrated manually later)
+StickerSignature stickerDB_4k_ohm_1mm[] = {
+    {"Empty",  {0, 0, 0}},
+    {"Red",   {605, 54, 93}},
+    {"LightGreen", {123, 513, 146}},
+    {"Blue",  {52, 336, 676}},
+    {"Gold", {513, 583, 620}},
+    {"LightBlue", {227, 653, 966}},
+    {"Brown", {150, 69, 97}},
+    {"Pink", {607, 119, 576}}, 
+    {"Yellow", {703, 629, 138}},
+    {"Purple", {177, 106, 502}},
+    {"Gray", {193, 218, 364}},
+    {"Green", {36, 338, 114}},
+    {"Orange", {612, 195, 111}}
 };
 
 
@@ -37,7 +54,7 @@ FenMapping pieceMap[] = {
     {"Orange", "k"},
 };
 
-const int STICKER_DB_SIZE = sizeof(stickerDB) / sizeof(StickerSignature);
+const int STICKER_DB_SIZE = sizeof(stickerDB_4k_ohm_1mm) / sizeof(StickerSignature);
 
 StickerReader::StickerReader(int sensorPin, int ledPin, 
                             int redPin, int greenPin, 
@@ -156,10 +173,10 @@ const char* StickerReader::identifySticker() {
     int minDist = 1000000;
 
     for (int i = 0; i < STICKER_DB_SIZE; i++) {
-        int d = distance(sig, stickerDB[i].values);
+        int d = distance(sig, stickerDB_4k_ohm_1mm[i].values);
         if (d < minDist) {
             minDist = d;
-            closestLabel = stickerDB[i].label;
+            closestLabel = stickerDB_4k_ohm_1mm[i].label;
         }
     }
 
