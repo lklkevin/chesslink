@@ -45,13 +45,13 @@ StickerSignature stickerDB_5mm_1mm[] = {
     {"Blue",  {6, 25, 42}},
     {"Gold", {25, 34, 32}},
     {"LightBlue", {14, 34, 53}},
-    {"LightPink", {35, 27, 58}},
+    {"LightPink", {27, 19, 39}},
     {"Pink", {34, 12, 37}}, 
     {"Yellow", {39, 39, 14}},
     {"Purple", {10, 10, 25}},
-    {"Gray", {14, 17, 30}},
+    {"White", {30, 42, 71}},
     {"Green", {8, 27, 17}},
-    {"Orange", {35, 19, 15}}
+    {"Orange", {29, 19, 15}}
 };
 
 
@@ -68,7 +68,7 @@ FenMapping pieceMap[] = {
     {"Pink", "B"},
     {"Yellow", "N"},
     {"Purple", "b"},
-    {"Gray", "n"},
+    {"White", "n"},
     {"LightGreen", "K"},
     {"Orange", "k"},
 };
@@ -134,24 +134,34 @@ int StickerReader::readAmbient() {
 // Return values: 0 = no significant change, 1 = piece placed, -1 = piece removed
 int StickerReader::checkAmbientChange(int threshold) {
     int currentAmbient = readAmbientLight(_sensorPin);
-    int diff = currentAmbient - _lastAmbient;
+    // int diff = currentAmbient - _lastAmbient;
     
     // Update the last ambient light reading regardless of change detection
-    _lastAmbient = currentAmbient;
-    _lastAmbientTime = millis();
+    // _lastAmbientTime = millis();
 
-    Serial.print("difference: ");
-    Serial.println(diff);
+    Serial.print("current ambient: ");
+    Serial.println(currentAmbient);
 
     // Return 1 if light increased (piece placed), -1 if decreased (piece removed), 0 if no significant change
-    if (diff > threshold) {
+    if (currentAmbient > 6 && _lastAmbient <= 6) {
+        _lastAmbient = currentAmbient;
         return -1;  // Piece removed (light increased)
-    } else if (diff < -threshold) {
+    } else if (currentAmbient <= 6) {
+        _lastAmbient = currentAmbient;
+
         return 1; // Piece added (light decreased)
     } else {
         return 0;  // No significant change
     }
 }
+
+// void normalize(int* color, float* normColor) {
+//     float length = sqrt(color[0]*color[0] + color[1]*color[1] + color[2]*color[2]);
+//     if (length == 0) length = 1; // avoid division by zero
+//     for (int i = 0; i < 3; ++i) {
+//         normColor[i] = (float)color[i] / length;
+//     }
+// }
 
 // Calculate the distance between two color signatures
 // using a weighted Euclidean distance formula
@@ -171,8 +181,6 @@ int StickerReader::distance(int* a, int* b) {
     }
     return sqrt(sum);
 }
-
-
 
 const char* StickerReader::getFENFromLabel(const char* label) {
     for (int i = 0; i < sizeof(pieceMap) / sizeof(FenMapping); i++) {
