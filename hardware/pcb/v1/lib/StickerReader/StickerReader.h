@@ -34,8 +34,8 @@ public:
     
     // New methods for ambient light detection
     int readAmbient();
-    bool hasAmbientChanged(int threshold = 30); // Kept for backward compatibility
-    int checkAmbientChange(int threshold = 30); // New method: returns 1 (placed), -1 (removed), 0 (no change)
+    bool hasAmbientChanged(int threshold = 5); // Kept for backward compatibility
+    int checkAmbientChange(int threshold = 5); // New method: returns 1 (placed), -1 (removed), 0 (no change)
 
 private:
     int _sensorPin;
