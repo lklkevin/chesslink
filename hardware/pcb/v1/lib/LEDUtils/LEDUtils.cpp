@@ -80,12 +80,12 @@ int readAmbientLight(int photoDiodePin) {
   analogWrite(BLUE_PIN, 255);
   
   long total = 0;
-  int numReadings = 10;  // You can adjust this based on how stable you need the reading
+  int numReadings = 3;  // You can adjust this based on how stable you need the reading
 
   // Take 'numReadings' readings and accumulate the results
   for (int i = 0; i < numReadings; i++) {
     total += analogRead(photoDiodePin);
-    delayMicroseconds(1000);  // Small delay between readings to allow sensor settling
+    // delayMicroseconds(500);  // Small delay between readings to allow sensor settling
   }
 
   // Calculate the average of the readings
