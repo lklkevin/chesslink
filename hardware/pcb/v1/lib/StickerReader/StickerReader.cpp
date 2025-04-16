@@ -39,17 +39,17 @@ StickerSignature stickerDB_4k_ohm_1mm[] = {
 
 // Example sticker database (calibrated manually later)
 StickerSignature stickerDB_5mm_1mm[] = {
-    {"Empty",  {0, 0, 0}},
+    {"Empty",  {5, 5, 15}},
     {"Red",   {33, 9, 13}},
-    {"LightGreen", {11, 36, 16}},
+    {"LightGreen", {11, 30, 16}},
     {"Blue",  {6, 25, 42}},
     {"Gold", {25, 34, 32}},
     {"LightBlue", {14, 34, 53}},
     {"LightPink", {35, 27, 58}},
     {"Pink", {34, 12, 37}}, 
     {"Yellow", {39, 39, 14}},
-    {"Purple", {14, 12, 35}},
-    {"Gray", {14, 12, 35}},
+    {"Purple", {14, 12, 25}},
+    {"Gray", {14, 17, 30}},
     {"Green", {8, 27, 17}},
     {"Orange", {35, 19, 15}}
 };
@@ -160,7 +160,7 @@ int StickerReader::checkAmbientChange(int threshold) {
 // weights based on your specific setup and the colors
 // we are using.
 int StickerReader::distance(int* a, int* b) {
-    float weights[3] = {1.0, 1.0, 1.0}; // weights if needed for R, G, B
+    float weights[3] = {1.0, 1.0, 0.8}; // weights if needed for R, G, B
     float sum = 0;
     for (int i = 0; i < 3; i++) {
         float d = a[i] - b[i];
