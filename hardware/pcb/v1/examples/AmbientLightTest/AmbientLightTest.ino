@@ -27,7 +27,7 @@ const int ON_LED_D = 12;
 // Helper function to print detailed information for each square
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   
   // Initialize all readers
   pinMode(PHOTO_PIN_A, INPUT);
