@@ -46,12 +46,12 @@ StickerSignature stickerDB_5mm_1mm[] = {
     {"Gold", {25, 34, 32}},
     {"LightBlue", {14, 34, 53}},
     {"LightPink", {27, 19, 39}},
-    {"Pink", {34, 12, 37}}, 
+    {"Pink", {27, 12, 37}}, 
     {"Yellow", {39, 39, 14}},
     {"Purple", {10, 10, 25}},
     {"White", {30, 42, 71}},
     {"Green", {8, 27, 17}},
-    {"Orange", {29, 19, 15}}
+    {"Orange", {29, 15, 15}}
 };
 
 
