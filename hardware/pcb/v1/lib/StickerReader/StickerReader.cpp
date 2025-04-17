@@ -139,8 +139,8 @@ int StickerReader::checkAmbientChange(int threshold) {
     // Update the last ambient light reading regardless of change detection
     // _lastAmbientTime = millis();
 
-    Serial.print("current ambient: ");
-    Serial.println(currentAmbient);
+    // Serial.print("current ambient: ");
+    // Serial.println(currentAmbient);
 
     // Return 1 if light increased (piece placed), -1 if decreased (piece removed), 0 if no significant change
     if (currentAmbient > 6 && _lastAmbient <= 6) {
