@@ -32,7 +32,7 @@ StickerReader readerD(PHOTO_PIN_D, ON_LED_D, RED_PIN_IO, GREEN_PIN_IO, BLUE_PIN_
 
 // Helper function to print detailed information for each square
 void printSquareInfo(StickerReader& reader, int* signature, const char* label) {
-  Serial.print("  R: "); Serial.print(signature[0]);
+  Serial.print("[DEBUG]  R: "); Serial.print(signature[0]);
   Serial.print(", G: "); Serial.print(signature[1]);
   Serial.print(", B: "); Serial.print(signature[2]);
   Serial.print(" => Detected: ");
@@ -47,7 +47,7 @@ void printSquareInfo(StickerReader& reader, int* signature, const char* label) {
     default: Serial.println("NONE"); break;
   }
   
-  Serial.print("  IR Value: ");
+  Serial.print("[DEBUG] IR Value: ");
   Serial.print(reader.getIRValue());
   Serial.print(" | Piece Present: ");
   Serial.println(reader.isPiecePresent() ? "YES" : "NO");
@@ -63,7 +63,7 @@ void setup() {
   readerC.begin();
   readerD.begin();
   
-  Serial.println("All Sticker Readers Initialized");
+  Serial.println("[DEBUG] All Sticker Readers Initialized");
 }
 
 void loop() {
@@ -87,7 +87,7 @@ void loop() {
   if (anyPieceChanged) {
     delay(500); // Debounce delay and allow piece to land
 
-    Serial.println("Piece change detected, updating board state...");
+    Serial.println("[DEBUG] Piece change detected, updating board state...");
     
     // Handle square A
     if (pieceChangedA) {
@@ -95,11 +95,11 @@ void loop() {
         // Piece placed - do full reading
         readerA.readSignature(signatureA);
         labelA = readerA.identifySticker();
-        Serial.println("Square A: Piece placed");
+        Serial.println("[DEBUG] Square A: Piece placed");
       } else {
         // Piece removed - mark as empty without LED flash
         labelA = "Empty";
-        Serial.println("Square A: Piece removed");
+        Serial.println("[DEBUG] Square A: Piece removed");
       }
     }
     
@@ -108,10 +108,10 @@ void loop() {
       if (changeB > 0) {
         readerB.readSignature(signatureB);
         labelB = readerB.identifySticker();
-        Serial.println("Square B: Piece placed");
+        Serial.println("[DEBUG] Square B: Piece placed");
       } else {
         labelB = "Empty";
-        Serial.println("Square B: Piece removed");
+        Serial.println("[DEBUG] Square B: Piece removed");
       }
     }
     
@@ -120,10 +120,10 @@ void loop() {
       if (changeC > 0) {
         readerC.readSignature(signatureC);
         labelC = readerC.identifySticker();
-        Serial.println("Square C: Piece placed");
+        Serial.println("[DEBUG] Square C: Piece placed");
       } else {
         labelC = "Empty";
-        Serial.println("Square C: Piece removed");
+        Serial.println("[DEBUG] Square C: Piece removed");
       }
     }
     
@@ -132,10 +132,10 @@ void loop() {
       if (changeD > 0) {
         readerD.readSignature(signatureD);
         labelD = readerD.identifySticker();
-        Serial.println("Square D: Piece placed");
+        Serial.println("[DEBUG] Square D: Piece placed");
       } else {
         labelD = "Empty";
-        Serial.println("Square D: Piece removed");
+        Serial.println("[DEBUG] Square D: Piece removed");
       }
     }
     
@@ -146,7 +146,7 @@ void loop() {
     const char* fenD = readerD.getFENFromLabel(labelD);
     
     // Print combined FEN
-    Serial.print("Combined FEN: ");
+    Serial.print("[DEBUG] Combined FEN: ");
     Serial.print(fenA);
     Serial.print(fenB);
     Serial.print(fenC);
@@ -155,26 +155,26 @@ void loop() {
     // Print detailed information only for changed squares that had pieces placed
     // No need to do full info print for removed pieces
     if (changeA > 0) {
-      Serial.println("Square A details:");
+      Serial.println("[DEBUG] Square A details:");
       printSquareInfo(readerA, signatureA, labelA);
     }
     
     if (changeB > 0) {
-      Serial.println("Square B details:");
+      Serial.println("[DEBUG] Square B details:");
       printSquareInfo(readerB, signatureB, labelB);
     }
     
     if (changeC > 0) {
-      Serial.println("Square C details:");
+      Serial.println("[DEBUG] Square C details:");
       printSquareInfo(readerC, signatureC, labelC);
     }
     
     if (changeD > 0) {
-      Serial.println("Square D details:");
+      Serial.println("[DEBUG] Square D details:");
       printSquareInfo(readerD, signatureD, labelD);
     }
     
-    Serial.println("=====================================");
+    Serial.println("[DEBUG] =====================================");
   } else {
     // If no change, just do a quick check every 200ms
     delay(200);
