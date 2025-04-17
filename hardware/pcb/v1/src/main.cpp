@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "StickerReader.h"
 #include "LEDUtils.h"
+#include "ArduinoJson.h"
 
 const int PHOTO_PIN_A = A1;
 const int PHOTO_PIN_B = A2;
