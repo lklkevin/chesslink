@@ -1,47 +1,30 @@
 import serial
 import threading
+import json
 import time
 
-# Map regions to their expected board positions
-REGION_MAP = {
-    'R1': ['a1', 'b1', 'a2', 'b2'],
-    'R2': ['c1', 'd1', 'c2', 'd2'],
-    'R3': ['e1', 'f1', 'e2', 'f2'],
-    'R4': ['g1', 'h1', 'g2', 'h2'],
-}
-
-# Global state
 board_state = {}
 
-def read_from_port(name, port):
+def is_json(line: str) -> bool:
+    return line.startswith("{") and line.endswith("}")
+
+def read_from_port(region, port):
     ser = serial.Serial(port, 9600)
     while True:
-        line = ser.readline().decode('utf-8').strip()
-        print(f"[{name}] {line}")
-        # Expected format: R1:a1P b1. a2. b2.
         try:
-            region, data = line.split(":")
-            squares = data.strip().split()
-            for s in squares:
-                sq, val = s[:2], s[2:]
-                board_state[sq] = val
+            line = ser.readline().decode('utf-8').strip()
+
+            if not is_json(line):
+                # print(f"[{region}][DEBUG] {line}")
+                continue
+
+            data = json.loads(line)
+            if "squares" in data:
+                for square, piece in data["squares"].items():
+                    board_state[square] = piece
         except Exception as e:
-            print(f"Error parsing from {name}: {e}")
+            print(f"[{region}][ERROR] Failed to parse: {e}")
 
-# Start threads for each Nano
-ports = {
-    'R1': '/dev/cu.usbserial-120',
-    'R2': '/dev/cu.usbserial-130',
-    # 'R3': '/dev/cu.usbserial-1412',
-    # 'R4': '/dev/cu.usbserial-1413',
-}
-
-for name, port in ports.items():
-    t = threading.Thread(target=read_from_port, args=(name, port))
-    t.daemon = True
-    t.start()
-
-# Periodically print full FEN string
 def fen_from_board():
     full_rows = []
     for rank in range(8, 0, -1):
@@ -62,6 +45,22 @@ def fen_from_board():
         full_rows.append(row)
     return "/".join(full_rows)
 
+# Map regions to ports
+ports = {
+    'R1': '/dev/cu.usbserial-130',
+    'R2': '/dev/cu.usbserial-120',
+    # 'R3': '/dev/cu.usbserial-1412',
+    # 'R4': '/dev/cu.usbserial-1413',
+}
+
+# Start a thread for each serial device
+for region, port in ports.items():
+    t = threading.Thread(target=read_from_port, args=(region, port))
+    t.daemon = True
+    t.start()
+
+# Print updated FEN every second
 while True:
     time.sleep(1)
-    print("Current FEN: ", fen_from_board())
+    print("Current FEN:", fen_from_board())
+
