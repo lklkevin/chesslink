@@ -16,32 +16,33 @@ char squareLabels[4][3];
 
 void setSquareLabels() {
   // Convert region string to proper define
-  if (strcmp(region, "R1") == 0) {
+  if (strcmp(region, "A") == 0) {
+    strncpy(squareLabels[0], "a4", 3);
+    strncpy(squareLabels[1], "b4", 3);
+    strncpy(squareLabels[2], "a3", 3);
+    strncpy(squareLabels[3], "b3", 3);
+  } else if (strcmp(region, "B") == 0) {
+    strncpy(squareLabels[0], "d4", 3);
+    strncpy(squareLabels[1], "d3", 3);
+    strncpy(squareLabels[2], "c4", 3);
+    strncpy(squareLabels[3], "c3", 3);
+  } else if (strcmp(region, "C") == 0) {
     strncpy(squareLabels[0], "a1", 3);
-    strncpy(squareLabels[1], "b1", 3);
-    strncpy(squareLabels[2], "a2", 3);
+    strncpy(squareLabels[1], "a2", 3);
+    strncpy(squareLabels[2], "b1", 3);
     strncpy(squareLabels[3], "b2", 3);
-  } else if (strcmp(region, "R2") == 0) {
-    strncpy(squareLabels[0], "c1", 3);
-    strncpy(squareLabels[1], "d1", 3);
-    strncpy(squareLabels[2], "c2", 3);
-    strncpy(squareLabels[3], "d2", 3);
-  } else if (strcmp(region, "R3") == 0) {
-    strncpy(squareLabels[0], "e1", 3);
-    strncpy(squareLabels[1], "f1", 3);
-    strncpy(squareLabels[2], "e2", 3);
-    strncpy(squareLabels[3], "f2", 3);
-  } else if (strcmp(region, "R4") == 0) {
-    strncpy(squareLabels[0], "g1", 3);
-    strncpy(squareLabels[1], "h1", 3);
-    strncpy(squareLabels[2], "g2", 3);
-    strncpy(squareLabels[3], "h2", 3);
+  } else if (strcmp(region, "D") == 0) {
+    strncpy(squareLabels[0], "d1", 3);
+    strncpy(squareLabels[1], "c1", 3);
+    strncpy(squareLabels[2], "d2", 3);
+    strncpy(squareLabels[3], "c2", 3);
   } else {
     // Default to R1 if region is invalid
-    strncpy(squareLabels[0], "a1", 3);
-    strncpy(squareLabels[1], "b1", 3);
-    strncpy(squareLabels[2], "a2", 3);
-    strncpy(squareLabels[3], "b2", 3);
+    Serial.println("[ERROR] Invalid region specified.");
+    strncpy(squareLabels[0], "a4", 3);
+    strncpy(squareLabels[1], "b4", 3);
+    strncpy(squareLabels[2], "a3", 3);
+    strncpy(squareLabels[3], "b3", 3);
   }
 }
 

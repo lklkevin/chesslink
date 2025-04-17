@@ -19,6 +19,7 @@ def read_from_port(region, port):
                 continue
 
             data = json.loads(line)
+            print(data)
             if "squares" in data:
                 for square, piece in data["squares"].items():
                     board_state[square] = piece
@@ -27,10 +28,10 @@ def read_from_port(region, port):
 
 def fen_from_board():
     full_rows = []
-    for rank in range(8, 0, -1):
+    for rank in range(4, 0, -1):
         row = ''
         empty = 0
-        for file in 'abcdefgh':
+        for file in 'abcd':
             sq = f"{file}{rank}"
             piece = board_state.get(sq, '.')
             if piece == '.':
@@ -47,8 +48,10 @@ def fen_from_board():
 
 # Map regions to ports
 ports = {
-    'R1': '/dev/cu.usbserial-130',
-    'R2': '/dev/cu.usbserial-120',
+    # 'A': '/dev/cu.usbserial-130',
+    'B': '/dev/cu.usbserial-130',
+    'C': '/dev/cu.usbserial-110',
+    'D': '/dev/cu.usbserial-120',
     # 'R3': '/dev/cu.usbserial-1412',
     # 'R4': '/dev/cu.usbserial-1413',
 }
