@@ -44,10 +44,10 @@ StickerSignature stickerDB_5mm_1mm[] = {
     {"LightGreen", {11, 30, 16}},
     {"Blue",  {6, 25, 42}},
     {"Gold", {25, 34, 32}},
-    {"LightBlue", {14, 34, 53}},
+    {"LightBlue", {14, 40, 60}},
     {"LightPink", {27, 19, 39}},
     {"Pink", {27, 12, 37}}, 
-    {"Yellow", {39, 39, 14}},
+    {"Yellow", {33, 33, 14}},
     {"Purple", {10, 10, 25}},
     {"White", {30, 42, 71}},
     {"Green", {8, 27, 17}},
@@ -139,14 +139,14 @@ int StickerReader::checkAmbientChange(int threshold) {
     // Update the last ambient light reading regardless of change detection
     // _lastAmbientTime = millis();
 
-    // Serial.print("current ambient: ");
-    // Serial.println(currentAmbient);
+    Serial.print("[DEBUG] current ambient: ");
+    Serial.println(currentAmbient);
 
     // Return 1 if light increased (piece placed), -1 if decreased (piece removed), 0 if no significant change
-    if (currentAmbient > 6 && _lastAmbient <= 6) {
+    if (currentAmbient > threshold && _lastAmbient <= threshold) {
         _lastAmbient = currentAmbient;
         return -1;  // Piece removed (light increased)
-    } else if (currentAmbient <= 6) {
+    } else if (currentAmbient <= threshold) {
         _lastAmbient = currentAmbient;
 
         return 1; // Piece added (light decreased)
